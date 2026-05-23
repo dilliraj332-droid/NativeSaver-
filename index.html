@@ -1,0 +1,1728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+<title>NativeSaver — Token Booking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+Telugu:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+:root {
+  --bg: #0c0c10;
+  --surface: #13131a;
+  --surface2: #1a1a24;
+  --surface3: #22222e;
+  --border: rgba(255,255,255,0.07);
+  --text: #f0ece4;
+  --muted: #6b6880;
+  --muted2: #9d99b0;
+  --accent: #ff6b2b;
+  --accent2: #ff9500;
+  --green: #00d084;
+  --blue: #4f8aff;
+  --red: #ff4444;
+  --yellow: #ffd60a;
+  --grad: linear-gradient(135deg, #ff6b2b, #ff9500);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Outfit',sans-serif; min-height:100vh; overflow-x:hidden; }
+
+/* NOISE TEXTURE */
+body::before { content:''; position:fixed; inset:0; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E"); pointer-events:none; z-index:0; }
+
+/* GLOW BG */
+.glow-orb { position:fixed; border-radius:50%; filter:blur(80px); pointer-events:none; z-index:0; }
+.glow-orb.o1 { width:400px; height:400px; background:rgba(255,107,43,0.08); top:-100px; right:-100px; }
+.glow-orb.o2 { width:300px; height:300px; background:rgba(79,138,255,0.06); bottom:100px; left:-80px; }
+
+.app { position:relative; z-index:1; max-width:440px; margin:0 auto; padding:0 16px 40px; }
+
+/* HEADER */
+.header { padding:20px 0 16px; display:flex; align-items:center; justify-content:space-between; }
+.logo { display:flex; align-items:center; gap:10px; }
+.logo-icon { width:38px; height:38px; background:var(--grad); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; box-shadow:0 4px 16px rgba(255,107,43,0.3); }
+.logo-text { font-size:18px; font-weight:800; letter-spacing:-0.5px; }
+.logo-sub { font-size:10px; color:var(--muted); font-weight:500; letter-spacing:1px; text-transform:uppercase; }
+.lang-btn { background:var(--surface2); border:1px solid var(--border); color:var(--muted2); font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; padding:7px 14px; border-radius:20px; cursor:pointer; transition:all 0.2s; }
+.lang-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+/* STATUS BAR */
+.status-bar { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 16px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; }
+.status-dot { width:8px; height:8px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(1.2)} }
+.status-text { font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; }
+.queue-count { font-size:12px; color:var(--muted); }
+.busy-badge { background:rgba(255,214,10,0.15); color:var(--yellow); border:1px solid rgba(255,214,10,0.3); border-radius:6px; padding:3px 8px; font-size:11px; font-weight:700; display:none; }
+
+/* CARDS */
+.card { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:24px; margin-bottom:16px; display:none; animation:slideUp 0.35s cubic-bezier(0.34,1.56,0.64,1); }
+.card.active { display:block; }
+@keyframes slideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+.card-icon { width:48px; height:48px; background:rgba(255,107,43,0.1); border:1px solid rgba(255,107,43,0.2); border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:22px; margin-bottom:16px; }
+.card-title { font-size:20px; font-weight:800; margin-bottom:4px; letter-spacing:-0.3px; }
+.card-sub { font-size:13px; color:var(--muted); margin-bottom:20px; }
+
+/* INPUTS */
+.input-wrap { position:relative; margin-bottom:14px; }
+.input-label { font-size:12px; font-weight:600; color:var(--muted2); letter-spacing:0.5px; text-transform:uppercase; margin-bottom:8px; display:block; }
+.phone-wrap { display:flex; gap:8px; }
+.country-code { background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:14px 14px; font-size:15px; font-weight:700; color:var(--muted2); white-space:nowrap; }
+input[type=text], input[type=number], select {
+  width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:12px;
+  padding:14px 16px; font-size:15px; font-family:'Outfit',sans-serif; color:var(--text);
+  outline:none; transition:all 0.2s; -webkit-appearance:none;
+}
+input:focus, select:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(255,107,43,0.1); }
+select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b6880' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; padding-right:40px; }
+select option { background:var(--surface2); }
+
+/* SERVICE GRID */
+.service-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+.service-card { background:var(--surface2); border:1.5px solid var(--border); border-radius:14px; padding:14px 12px; cursor:pointer; transition:all 0.2s; text-align:center; }
+.service-card:hover { border-color:rgba(255,107,43,0.4); }
+.service-card.selected { border-color:var(--accent); background:rgba(255,107,43,0.08); box-shadow:0 0 16px rgba(255,107,43,0.1); }
+.service-card .svc-icon { font-size:24px; margin-bottom:6px; }
+.service-card .svc-name { font-size:13px; font-weight:700; margin-bottom:2px; }
+.service-card .svc-price { font-size:11px; color:var(--muted); }
+.service-card.selected .svc-price { color:var(--accent); }
+
+/* PAGES INPUT */
+.pages-row { display:flex; align-items:center; gap:12px; background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:10px 14px; }
+.pages-btn { width:36px; height:36px; border-radius:8px; border:1px solid var(--border); background:var(--surface3); color:var(--text); font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; flex-shrink:0; }
+.pages-btn:hover { background:var(--accent); border-color:var(--accent); }
+.pages-num { font-size:22px; font-weight:800; font-family:'JetBrains Mono',monospace; flex:1; text-align:center; }
+.pages-label { font-size:11px; color:var(--muted); }
+
+/* COST SUMMARY */
+.cost-summary { background:rgba(255,107,43,0.06); border:1px solid rgba(255,107,43,0.15); border-radius:14px; padding:16px; margin-bottom:16px; display:none; }
+.cost-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.cost-row:last-child { margin-bottom:0; padding-top:8px; border-top:1px solid rgba(255,107,43,0.15); }
+.cost-label { font-size:13px; color:var(--muted2); }
+.cost-val { font-size:13px; font-weight:700; font-family:'JetBrains Mono',monospace; }
+.cost-total-label { font-size:14px; font-weight:700; }
+.cost-total-val { font-size:18px; font-weight:800; color:var(--accent); font-family:'JetBrains Mono',monospace; }
+
+/* BUTTONS */
+.btn-primary { width:100%; background:var(--grad); border:none; border-radius:14px; padding:16px; font-size:16px; font-weight:800; font-family:'Outfit',sans-serif; color:white; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 20px rgba(255,107,43,0.3); letter-spacing:0.3px; }
+.btn-primary:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(255,107,43,0.4); }
+.btn-primary:disabled { opacity:0.4; cursor:not-allowed; transform:none; box-shadow:none; }
+.btn-secondary { width:100%; background:transparent; border:1px solid var(--border); border-radius:14px; padding:14px; font-size:14px; font-weight:600; font-family:'Outfit',sans-serif; color:var(--muted2); cursor:pointer; transition:all 0.2s; margin-top:10px; }
+.btn-secondary:hover { border-color:var(--muted2); color:var(--text); }
+.btn-green { width:100%; background:linear-gradient(135deg,#00d084,#00b870); border:none; border-radius:14px; padding:16px; font-size:15px; font-weight:800; font-family:'Outfit',sans-serif; color:white; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 16px rgba(0,208,132,0.25); margin-top:10px; }
+.btn-green:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,208,132,0.35); }
+.btn-whatsapp { width:100%; background:linear-gradient(135deg,#25d366,#128c7e); border:none; border-radius:14px; padding:16px; font-size:15px; font-weight:800; font-family:'Outfit',sans-serif; color:white; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 16px rgba(37,211,102,0.25); margin-top:10px; }
+.btn-whatsapp:hover { transform:translateY(-2px); }
+.btn-notify { width:100%; background:linear-gradient(135deg,#7c3aed,#4f46e5); border:none; border-radius:14px; padding:16px; font-size:15px; font-weight:800; font-family:'Outfit',sans-serif; color:white; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 16px rgba(124,58,237,0.3); margin-top:10px; }
+.btn-notify:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(124,58,237,0.4); }
+.btn-notify.active { background:linear-gradient(135deg,#00d084,#00b870); box-shadow:0 4px 16px rgba(0,208,132,0.3); }
+.btn-notify.denied { background:var(--surface3); color:var(--muted); box-shadow:none; cursor:not-allowed; }
+
+/* TOKEN DISPLAY */
+.token-display { text-align:center; padding:10px 0 20px; }
+.token-label { font-size:11px; color:var(--muted); letter-spacing:2px; text-transform:uppercase; margin-bottom:8px; }
+.token-num { font-size:72px; font-weight:900; font-family:'JetBrains Mono',monospace; background:var(--grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1; letter-spacing:-2px; }
+.token-sub { font-size:13px; color:var(--muted); margin-top:8px; }
+
+/* QUEUE STATUS */
+.queue-status { background:var(--surface2); border:1px solid var(--border); border-radius:14px; padding:16px; margin:16px 0; }
+.queue-row { display:flex; align-items:center; justify-content:space-between; }
+.queue-ahead { font-size:13px; color:var(--muted2); }
+.queue-ahead span { color:var(--text); font-weight:700; }
+.wait-time { font-size:13px; color:var(--muted2); }
+.wait-time span { color:var(--accent); font-weight:700; }
+
+/* TIMER */
+.expiry-timer { display:flex; align-items:center; justify-content:center; gap:8px; background:rgba(255,68,68,0.08); border:1px solid rgba(255,68,68,0.2); border-radius:10px; padding:10px 16px; margin-bottom:14px; }
+.timer-icon { font-size:16px; }
+.timer-text { font-size:13px; color:var(--red); font-weight:600; }
+.timer-count { font-family:'JetBrains Mono',monospace; font-weight:700; font-size:15px; color:var(--red); }
+
+/* RECEIPT CAPTURE */
+#receiptCapture { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:20px; margin-bottom:16px; }
+.receipt-header { display:flex; align-items:center; gap:12px; margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid var(--border); }
+.receipt-logo { width:40px; height:40px; background:var(--grad); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; }
+.receipt-shop { font-size:16px; font-weight:800; }
+.receipt-tagline { font-size:11px; color:var(--muted); }
+.receipt-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.receipt-key { font-size:12px; color:var(--muted); }
+.receipt-val { font-size:13px; font-weight:700; font-family:'JetBrains Mono',monospace; text-align:right; }
+.receipt-footer { margin-top:14px; padding-top:14px; border-top:1px solid var(--border); text-align:center; font-size:11px; color:var(--muted); }
+
+/* WARN NOTE */
+.info-note { background:rgba(79,138,255,0.08); border:1px solid rgba(79,138,255,0.2); border-radius:10px; padding:12px 14px; font-size:12px; color:#8ab4ff; margin-bottom:16px; line-height:1.5; }
+.warn-note { background:rgba(255,214,10,0.08); border:1px solid rgba(255,214,10,0.2); border-radius:10px; padding:12px 14px; font-size:12px; color:#ffd60a; margin-bottom:16px; line-height:1.5; }
+
+/* STEP INDICATOR */
+.steps { display:flex; gap:6px; margin-bottom:20px; }
+.step-dot { height:4px; border-radius:2px; flex:1; background:var(--surface3); transition:all 0.3s; }
+.step-dot.active { background:var(--accent); }
+.step-dot.done { background:rgba(255,107,43,0.4); }
+
+/* SHOP CLOSED */
+.shop-closed { text-align:center; padding:40px 20px; }
+.closed-icon { font-size:48px; margin-bottom:16px; }
+.closed-title { font-size:22px; font-weight:800; margin-bottom:8px; }
+.closed-sub { font-size:14px; color:var(--muted); }
+
+/* BUSY WARNING */
+.busy-warning { background:rgba(255,214,10,0.08); border:1px solid rgba(255,214,10,0.25); border-radius:14px; padding:16px; margin-bottom:16px; display:none; }
+.busy-warning-title { font-size:14px; font-weight:700; color:var(--yellow); margin-bottom:4px; }
+.busy-warning-sub { font-size:12px; color:var(--muted2); }
+
+/* CHECK STATUS */
+.check-status-result { background:var(--surface2); border:1px solid var(--border); border-radius:14px; padding:20px; margin-top:14px; display:none; }
+.status-token-num { font-size:48px; font-weight:900; font-family:'JetBrains Mono',monospace; background:var(--grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+
+/* QUEUE LIVE PULSE */
+.queue-live { display:flex; align-items:center; gap:6px; }
+.queue-live-dot { width:7px; height:7px; border-radius:50%; background:var(--green); animation:pulse 1.5s infinite; flex-shrink:0; }
+.youre-next { background:linear-gradient(135deg,rgba(0,208,132,0.15),rgba(0,184,112,0.1)); border:1px solid rgba(0,208,132,0.35); border-radius:12px; padding:12px 16px; margin-bottom:12px; display:none; text-align:center; }
+.youre-next-title { font-size:15px; font-weight:800; color:var(--green); margin-bottom:2px; }
+.youre-next-sub { font-size:12px; color:var(--muted2); }
+
+/* ESTIMATED READY TIME */
+.ready-time-badge { background:rgba(79,138,255,0.1); border:1px solid rgba(79,138,255,0.25); border-radius:10px; padding:8px 14px; display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.ready-time-icon { font-size:15px; }
+.ready-time-text { font-size:13px; color:#8ab4ff; font-weight:600; }
+
+/* SHARE MODAL */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:100; display:none; align-items:flex-end; justify-content:center; backdrop-filter:blur(4px); }
+.modal-overlay.open { display:flex; }
+.modal-sheet { background:var(--surface); border-radius:24px 24px 0 0; padding:24px; width:100%; max-width:440px; animation:slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+.modal-handle { width:40px; height:4px; border-radius:2px; background:var(--border); margin:0 auto 20px; }
+.modal-title { font-size:18px; font-weight:800; margin-bottom:16px; }
+.share-option { display:flex; align-items:center; gap:14px; padding:14px; background:var(--surface2); border:1px solid var(--border); border-radius:14px; cursor:pointer; margin-bottom:10px; transition:all 0.2s; }
+.share-option:hover { border-color:var(--accent); }
+.share-option-icon { font-size:24px; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.share-option-text { font-size:14px; font-weight:700; }
+.share-option-sub { font-size:12px; color:var(--muted); }
+
+/* CALL BUTTON */
+.btn-call { width:100%; background:linear-gradient(135deg,#4f8aff,#2563eb); border:none; border-radius:14px; padding:16px; font-size:15px; font-weight:800; font-family:'Outfit',sans-serif; color:white; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 16px rgba(79,138,255,0.3); margin-top:10px; }
+.btn-call:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(79,138,255,0.4); }
+
+/* DELIVERY LOCATION */
+.delivery-section { background:rgba(79,138,255,0.06); border:1px solid rgba(79,138,255,0.18); border-radius:16px; padding:16px; margin-bottom:16px; }
+.delivery-toggle { display:flex; align-items:center; justify-content:space-between; cursor:pointer; }
+.delivery-toggle-left { display:flex; align-items:center; gap:10px; }
+.delivery-toggle-icon { width:38px; height:38px; background:rgba(79,138,255,0.15); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+.delivery-toggle-title { font-size:14px; font-weight:700; }
+.delivery-toggle-sub { font-size:11px; color:var(--muted); margin-top:1px; }
+.delivery-switch { position:relative; width:44px; height:24px; flex-shrink:0; }
+.delivery-switch input { opacity:0; width:0; height:0; }
+.delivery-switch-slider { position:absolute; inset:0; background:var(--surface3); border-radius:24px; transition:0.3s; border:1px solid var(--border); cursor:pointer; }
+.delivery-switch-slider:before { content:''; position:absolute; width:18px; height:18px; left:2px; top:2px; background:var(--muted); border-radius:50%; transition:0.3s; }
+.delivery-switch input:checked + .delivery-switch-slider { background:rgba(79,138,255,0.25); border-color:var(--blue); }
+.delivery-switch input:checked + .delivery-switch-slider:before { transform:translateX(20px); background:var(--blue); }
+.delivery-locations { margin-top:14px; display:none; }
+.delivery-locations.open { display:block; }
+.location-grid { display:flex; flex-direction:column; gap:8px; }
+.location-item { display:flex; align-items:center; gap:12px; background:var(--surface2); border:1.5px solid var(--border); border-radius:12px; padding:12px 14px; cursor:pointer; transition:all 0.2s; }
+.location-item:hover { border-color:rgba(79,138,255,0.4); }
+.location-item.selected { border-color:var(--blue); background:rgba(79,138,255,0.1); }
+.location-item .loc-icon { font-size:20px; flex-shrink:0; line-height:1; }
+.location-item .loc-name { font-size:13px; font-weight:700; display:block; line-height:1.3; }
+.location-item .loc-tag { font-size:10px; color:var(--muted); font-weight:600; letter-spacing:0.5px; display:block; margin-top:2px; }
+.location-item .loc-check { width:20px; height:20px; border-radius:50%; border:2px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all 0.2s; font-size:0; }
+.location-item.selected .loc-check { background:var(--blue); border-color:var(--blue); font-size:11px; color:white; font-weight:800; line-height:1; }
+
+/* WA FILES BTN (updated) */
+.btn-wa-files { width:100%; background:linear-gradient(135deg,#25d366,#128c7e); border:none; border-radius:14px; padding:16px; font-size:15px; font-weight:800; font-family:'Outfit',sans-serif; color:white; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 16px rgba(37,211,102,0.25); margin-top:10px; }
+.btn-wa-files:hover { transform:translateY(-2px); }
+
+@media print {
+  body > *:not(#printArea) { display:none !important; }
+  #printArea { display:block !important; background:white !important; color:black !important; padding:20px !important; }
+}
+</style>
+</head>
+<body>
+<div class="glow-orb o1"></div>
+<div class="glow-orb o2"></div>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">🖨️</div>
+      <div>
+        <div class="logo-text" id="logoText">NativeSaver</div>
+        <div class="logo-sub" id="logoSub">Print & Xerox Shop</div>
+      </div>
+    </div>
+    <button class="lang-btn" id="langBtn" onclick="toggleLang()">తె</button>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar" id="statusBar">
+    <div class="status-text">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Shop Open</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="busy-badge" id="busyBadge">🔥 BUSY</div>
+      <div class="queue-count" id="queueCount">0 in queue</div>
+    </div>
+  </div>
+
+  <!-- STEP DOTS -->
+  <div class="steps" id="stepDots">
+    <div class="step-dot active" id="dot1"></div>
+    <div class="step-dot" id="dot2"></div>
+    <div class="step-dot" id="dot3"></div>
+  </div>
+
+  <!-- CARD 1: PHONE -->
+  <div class="card active" id="card1">
+    <div class="card-icon">👤</div>
+    <div class="card-title" id="c1title">Book Your Token</div>
+    <div class="card-sub" id="c1sub">Enter your mobile number to get started</div>
+
+    <div class="info-note" id="c1note">📋 Token is compulsory. Walk-ins are not accepted at the counter.</div>
+
+    <div style="border-radius:14px;overflow:hidden;margin-bottom:16px;border:1px solid rgba(255,149,0,0.25);">
+      <div style="background:linear-gradient(135deg,rgba(255,107,43,0.15),rgba(255,149,0,0.1));padding:10px 14px;border-bottom:1px solid rgba(255,149,0,0.2);display:flex;align-items:center;gap:8px;">
+        <span style="font-size:14px;">💳</span>
+        <span style="font-size:12px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;color:var(--accent2);">Payment Notice</span>
+      </div>
+      <div style="background:rgba(255,107,43,0.05);padding:12px 14px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:16px;">📵</span>
+            <span style="font-size:12px;color:var(--muted2);">Change at counter</span>
+          </div>
+          <span style="background:rgba(255,68,68,0.15);color:#ff6b6b;border:1px solid rgba(255,68,68,0.3);border-radius:6px;padding:2px 10px;font-size:11px;font-weight:800;letter-spacing:0.5px;">NOT AVAILABLE</span>
+        </div>
+        <div style="height:1px;background:rgba(255,255,255,0.05);"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:16px;">📱</span>
+            <span style="font-size:12px;color:var(--muted2);">UPI Payment</span>
+          </div>
+          <span style="background:rgba(0,208,132,0.15);color:var(--green);border:1px solid rgba(0,208,132,0.3);border-radius:6px;padding:2px 10px;font-size:11px;font-weight:800;letter-spacing:0.5px;">PREFERRED ✓</span>
+        </div>
+        <div style="height:1px;background:rgba(255,255,255,0.05);"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:16px;">💵</span>
+            <span style="font-size:12px;color:var(--muted2);">Cash — exact amount only</span>
+          </div>
+          <span style="background:rgba(255,214,10,0.12);color:var(--yellow);border:1px solid rgba(255,214,10,0.3);border-radius:6px;padding:2px 10px;font-size:11px;font-weight:800;letter-spacing:0.5px;">ACCEPTED</span>
+        </div>
+      </div>
+    </div>
+
+    <label class="input-label" id="c1label">Mobile Number</label>
+    <div class="phone-wrap">
+      <div class="country-code">🇮🇳 +91</div>
+      <input type="number" id="phoneInput" placeholder="98765 43210" maxlength="10" oninput="validatePhone()">
+    </div>
+
+    <div style="margin-top:16px;">
+      <button class="btn-primary" id="c1btn" onclick="goToStep2()" disabled>Continue →</button>
+      <button class="btn-secondary" id="checkStatusBtn" onclick="showCheckStatus()">🔍 Check My Token Status</button>
+      <button class="btn-secondary" id="historyBtn" onclick="showHistory()">📋 My Booking History</button>
+    </div>
+
+    <!-- Check Status Section -->
+    <div id="checkStatusSection" style="display:none;margin-top:16px;">
+      <label class="input-label">Enter your phone to check status</label>
+      <div class="phone-wrap" style="margin-bottom:10px;">
+        <div class="country-code">🇮🇳 +91</div>
+        <input type="number" id="checkPhone" placeholder="98765 43210">
+      </div>
+      <button class="btn-primary" onclick="checkTokenStatus()" style="margin-top:0;">Check Status</button>
+      <div class="check-status-result" id="checkResult"></div>
+    </div>
+
+    <!-- History Section -->
+    <div id="historySection" style="display:none;margin-top:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--muted2);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px;">📋 Booking History</div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+  <!-- CARD 2: SERVICE -->
+  <div class="card" id="card2">
+    <div class="card-icon">🖨️</div>
+    <div class="card-title" id="c2title">Select Service</div>
+    <div class="card-sub" id="c2sub">Choose what you need printed</div>
+
+    <!-- BUSY WARNING -->
+    <div class="busy-warning" id="busyWarning">
+      <div class="busy-warning-title">🔥 Shop is Busy Right Now</div>
+      <div class="busy-warning-sub" id="busyWarnSub">5+ people in queue. Expected wait time: ~25 mins. You can still book your token.</div>
+    </div>
+
+    <div class="service-grid" id="serviceGrid">
+      <!-- filled by JS -->
+    </div>
+
+    <!-- UNIT LEGEND -->
+    <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:18px;">📄</span>
+        <span style="font-size:12px;color:var(--muted2);"><strong style="color:var(--text);">1 unit</strong> = <strong style="color:var(--text);">1</strong> Black &amp; White page <span style="color:var(--muted);">(single or double side)</span></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:18px;">🎨</span>
+        <span style="font-size:12px;color:var(--muted2);"><strong style="color:var(--text);">4 units</strong> = <strong style="color:var(--text);">1</strong> Colour page</span>
+      </div>
+    </div>
+
+    <div id="multiPagesSection"></div>
+
+    <div class="cost-summary" id="costSummary">
+      <div id="costRows"></div>
+      <div class="cost-row">
+        <span class="cost-label" id="csUnits">Total Units</span>
+        <span class="cost-val" id="csUnitsVal">—</span>
+      </div>
+      <div class="cost-row">
+        <span class="cost-total-label" id="csTotal">Estimated Amount</span>
+        <span class="cost-total-val" id="csTotalVal">—</span>
+      </div>
+    </div>
+
+    <div id="noteSection" style="display:none;">
+      <div class="info-note" id="c2note">💡 UPI preferred — carry exact cash, no change given at counter.</div>
+    </div>
+
+    <!-- DELIVERY LOCATION (OPTIONAL) -->
+    <div class="delivery-section" id="deliverySection">
+      <div class="delivery-toggle" id="deliveryToggleRow">
+        <div class="delivery-toggle-left">
+          <div class="delivery-toggle-icon">📍</div>
+          <div>
+            <div class="delivery-toggle-title" id="delivTitle">Delivery Location</div>
+            <div class="delivery-toggle-sub" id="delivSub">Optional — where to deliver near KKB</div>
+          </div>
+        </div>
+        <div class="delivery-switch">
+          <input type="checkbox" id="delivToggle" style="pointer-events:none;">
+          <span class="delivery-switch-slider"></span>
+        </div>
+      </div>
+      <div class="delivery-locations" id="deliveryLocations">
+        <div style="font-size:11px;color:var(--muted2);letter-spacing:0.5px;text-transform:uppercase;font-weight:600;margin-bottom:10px;" id="delivPickLabel">Select a drop point</div>
+        <div class="location-grid" id="locationGrid">
+          <!-- filled by JS -->
+        </div>
+        <div style="margin-top:10px;padding:10px 12px;background:rgba(255,214,10,0.06);border:1px solid rgba(255,214,10,0.18);border-radius:10px;font-size:11px;color:#ffd60a;line-height:1.5;" id="delivNote">
+          ⚡ Delivery subject to availability. Extra charges may apply. Confirm with shop.
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="c2btn" onclick="bookToken()" disabled>Get My Token 🎫</button>
+    <button class="btn-secondary" id="c2back" onclick="goStep(1)">← Back</button>
+  </div>
+
+  <!-- CARD 3: TOKEN SUCCESS -->
+  <div class="card" id="card3">
+    <div id="receiptCapture" style="padding:0;">
+      <div style="text-align:center;padding:10px 0 6px;">
+        <div style="font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;" id="c3label">Your Token Number</div>
+        <div class="token-num" id="tokenNum">T-001</div>
+        <div class="token-sub" id="c3sub">Show this at the counter</div>
+      </div>
+
+      <div class="queue-status">
+        <div class="queue-row">
+          <div class="queue-live"><div class="queue-live-dot"></div><div class="queue-ahead" id="queueAhead">People ahead: <span id="aheadNum">0</span></div></div>
+          <div class="wait-time" id="waitTimeLabel">Wait: <span id="waitTimeVal">~5 min</span></div>
+        </div>
+      </div>
+
+      <!-- YOU'RE NEXT banner -->
+      <div class="youre-next" id="youreNextBanner">
+        <div class="youre-next-title">🎉 You're Next!</div>
+        <div class="youre-next-sub">Please head to the counter now</div>
+      </div>
+
+      <!-- ESTIMATED READY TIME -->
+      <div class="ready-time-badge" id="readyTimeBadge">
+        <span class="ready-time-icon">🕐</span>
+        <span class="ready-time-text" id="readyTimeText">Ready by ~—</span>
+      </div>
+
+      <div class="expiry-timer" id="expiryTimer">
+        <span class="timer-icon">⏱</span>
+        <span class="timer-text" id="timerLabel">Token expires in:</span>
+        <span class="timer-count" id="timerCount">2:00:00</span>
+      </div>
+
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;">
+        <div class="receipt-row">
+          <span class="receipt-key" id="r1">Phone</span>
+          <span class="receipt-val" id="rPhone">—</span>
+        </div>
+        <div class="receipt-row">
+          <span class="receipt-key" id="r2">Service</span>
+          <span class="receipt-val" id="rService">—</span>
+        </div>
+        <div class="receipt-row" id="rPagesRow">
+          <span class="receipt-key" id="r3">Pages</span>
+          <span class="receipt-val" id="rPages">—</span>
+        </div>
+        <div class="receipt-row">
+          <span class="receipt-key" id="r4">Units</span>
+          <span class="receipt-val" id="rAmount">—</span>
+        </div>
+        <div class="receipt-row">
+          <span class="receipt-key" id="r5">Booked At</span>
+          <span class="receipt-val" id="rTime">—</span>
+        </div>
+        <div class="receipt-row" id="rDelivRow" style="display:none;">
+          <span class="receipt-key" id="r6">Delivery</span>
+          <span class="receipt-val" id="rDeliv" style="color:var(--blue);">—</span>
+        </div>
+      </div>
+
+      <div class="warn-note" id="c3warn">⚠️ UPI preferred — carry exact cash, no change given. Token valid 2 hrs.</div>
+    </div>
+
+    <button class="btn-green" onclick="openShareModal()" id="saveBtn">📤 Share / Save Token</button>
+    <button class="btn-notify" id="notifyBtn" onclick="enableNotification()">🔔 Notify Me Before Expiry</button>
+    <button class="btn-wa-files" onclick="sendFilesWhatsApp()" id="shareBtn">📎 Send Print Files on WhatsApp</button>
+    <button class="btn-call" onclick="callShop()" id="callBtn">📞 Call Shop</button>
+    <button class="btn-secondary" onclick="bookAnother()" id="c3more">🔄 Book Another Token</button>
+  </div>
+
+</div>
+
+<!-- SHARE MODAL -->
+<div class="modal-overlay" id="shareModal" onclick="closeShareModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📤 Share Token</div>
+    <div class="share-option" onclick="shareTokenImage()">
+      <div class="share-option-icon" style="background:rgba(0,208,132,0.15);">📸</div>
+      <div>
+        <div class="share-option-text">Save as Image</div>
+        <div class="share-option-sub">Download token screenshot to your phone</div>
+      </div>
+    </div>
+    <div class="share-option" onclick="shareTokenWhatsApp()">
+      <div class="share-option-icon" style="background:rgba(37,211,102,0.15);">💬</div>
+      <div>
+        <div class="share-option-text">Share via WhatsApp</div>
+        <div class="share-option-sub">Send token number to family or friends</div>
+      </div>
+    </div>
+    <div class="share-option" onclick="shareTokenNative()">
+      <div class="share-option-icon" style="background:rgba(79,138,255,0.15);">📱</div>
+      <div>
+        <div class="share-option-text">More Options…</div>
+        <div class="share-option-sub">Share via any app on your phone</div>
+      </div>
+    </div>
+    <button class="btn-secondary" style="margin-top:4px;" onclick="closeShareModal()">Cancel</button>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────
+const TG_TOKEN  = '8786662406:AAEkNMoYOt7Ooinkyq3qe1MOLL2FuPinCFU';
+const TG_CHAT   = '651075904';
+const SHOP_OPEN  = 9;   // 9 AM
+const SHOP_CLOSE = 21;  // 9 PM
+const TOKEN_EXPIRY_MINS = 120; // 2 hours
+const BUSY_THRESHOLD = 5;
+const UNIT_PRICE = 2.5;
+const MIN_PAGES = 4; // minimum 4 units: B&W min 4 pages (4 units), Colour min 1 page (4 units)
+
+// ── SERVICES ──────────────────────────────────────────────────────────
+const SERVICES = [
+  { id:'bw',      icon:'📄', name:'B&W Print',      nameTe:'B&W ప్రింట్',      units:1,  perPage:true,  price:2.5,  pageLabel:'pages'  },
+  { id:'colour',  icon:'🎨', name:'Colour Print',   nameTe:'కలర్ ప్రింట్',     units:4,  perPage:true,  price:10,   pageLabel:'pages'  },
+  { id:'lam',     icon:'🗂️', name:'Lamination',     nameTe:'లేమినేషన్',        units:0,  perPage:true,  price:0,    pageLabel:'sheets', isLam:true },
+  { id:'bind',    icon:'📚', name:'Binding',         nameTe:'బైండింగ్',          units:0,  perPage:false, price:0,    pageLabel:'sets',   isBind:true },
+  { id:'sticker', icon:'🏷️', name:'Sticker',  nameTe:'స్టిక్కర్', units:0,  perPage:true,  price:0,    pageLabel:'pcs',    isSticker:true },
+];
+
+// B&W Print sizes config
+const BW_SIZES = [
+  { id:'bw_a4', label:'A4', labelTe:'A4', icon:'📋', price:2.5, units:1 },
+];
+let selectedBwSize = 'bw_a4'; // default
+
+// Colour Print sizes config
+const COLOUR_SIZES = [
+  { id:'colour_standard', label:'Standard', labelTe:'స్టాండర్డ్', icon:'🎨', price:10, units:4 },
+  { id:'colour_a4',       label:'A4',       labelTe:'A4',          icon:'🖼️', price:15, units:4 },
+];
+let selectedColourSize = 'colour_standard'; // default
+
+// Lamination sizes config
+const LAM_SIZES = [
+  { id:'lam_a5', label:'Up to A5', labelTe:'A5 వరకు', price:20,  units:8  },
+  { id:'lam_a4', label:'A4',       labelTe:'A4',       price:25,  units:10 },
+  { id:'lam_a3', label:'A3',       labelTe:'A3',       price:45,  units:18 },
+];
+let selectedLamSize = 'lam_a4'; // default
+
+// Binding types config
+const BIND_TYPES = [
+  { id:'bind_pin',    label:'Pin Binding',    labelTe:'పిన్ బైండింగ్',    icon:'📌', price:20, units:8  },
+  { id:'bind_spiral', label:'Spiral Binding', labelTe:'స్పైరల్ బైండింగ్', icon:'🌀', price:30, units:12 },
+];
+let selectedBindType = 'bind_pin'; // default
+
+// Sticker / Card types config
+const STICKER_TYPES = [
+  { id:'sticker_bw',     label:'B&W Sticker',     labelTe:'B&W స్టిక్కర్',     icon:'🖤', price:15, units:6  },
+  { id:'sticker_colour', label:'Colour Sticker',  labelTe:'కలర్ స్టిక్కర్',    icon:'🌈', price:20, units:8  },
+];
+let selectedStickerType = 'sticker_bw'; // default
+
+// ── DELIVERY LOCATIONS ────────────────────────────────────────────────
+const DELIVERY_LOCATIONS = [
+  { id:'railway',  icon:'🚂', name:'Railway Gate',    nameTe:'రైల్వే గేటు',       tag:'KKB' },
+  { id:'school',   icon:'🏫', name:'High School',     nameTe:'హైస్కూల్',          tag:'KKB' },
+  { id:'hanuman',  icon:'🛕', name:'Hanuman Temple',  nameTe:'హనుమాన్ టెంపుల్',   tag:'KKB' },
+  { id:'srirama',  icon:'🪔', name:'Sri Rama Temple', nameTe:'శ్రీ రామ టెంపుల్',  tag:'KKB' },
+  { id:'gangamma', icon:'🪨', name:'Gangamma Stone',  nameTe:'గంగమ్మ స్టోన్',     tag:'KKB' },
+];
+let selectedDelivery = null; // null = no delivery / pickup at shop
+
+// ── STATE ─────────────────────────────────────────────────────────────
+let lang = 'en';
+let selectedServices = {}; // { id: pages }
+let currentStep = 1;
+let timerInterval = null;
+let tokenExpiry = null;
+
+// ── LANGUAGE ──────────────────────────────────────────────────────────
+const T = {
+  en: {
+    logoSub:'Print & Xerox Shop', open:'Shop Open', closed:'Shop Closed',
+    c1title:'Book Your Token', c1sub:'Enter your mobile number to get started',
+    c1note:'📋 Token is compulsory. Walk-ins are not accepted at the counter.',
+    c1label:'Mobile Number', c1btn:'Continue →', checkStatusBtn:'🔍 Check My Token Status',
+    c2title:'Select Service', c2sub:'Choose what you need printed',
+    busyTitle:'🔥 Shop is Busy Right Now',
+    pagesLabel:'Number of Pages', pagesLbl:'pages',
+    csService:'Service', csPages:'Pages', csUnits:'Units', csTotal:'Estimated Amount',
+    c2note:'💡 UPI preferred — carry exact cash, no change given at counter.',
+    c2btn:'Get My Token 🎫', c2back:'← Back',
+    c3label:'Your Token Number', c3sub:'Show this at the counter',
+    queueAhead:'People ahead:', waitTimeLabel:'Wait:',
+    timerLabel:'Token expires in:',
+    r1:'Phone', r2:'Service', r3:'Pages', r4:'Units', r5:'Booked At',
+    c3warn:'⚠️ UPI preferred — carry exact cash, no change given. Token valid 2 hrs.',
+    saveBtn:'📥 Save Token', shareBtn:'📎 Send Files on WhatsApp', c3more:'🔄 Book Another Token',
+    langBtn:'తె', inQueue:'in queue',
+    closedTitle:'Shop is Closed', closedSub:'We are open 9 AM – 9 PM. Please come back during working hours.',
+    busyWarn:'people in queue. Expected wait: ~',
+    busyWarnEnd:'mins. You can still book.',
+    checkTitle:'Token Status', noToken:'No active token found for this number.',
+    expiredToken:'Your token has expired. Please book again.',
+    tokenActive:'Your token is active!',
+    aheadText:'people ahead of you',
+    waitText:'estimated wait',
+    delivTitle:'Delivery Location',
+    delivSub:'Optional — where to deliver near KKB',
+    delivPickLabel:'Select a drop point',
+    delivNote:'⚡ Delivery subject to availability. Extra charges may apply. Confirm with shop.',
+    r6:'Delivery',
+  },
+  te: {
+    logoSub:'ప్రింట్ & జెరాక్స్ షాప్', open:'షాప్ తెరిచి ఉంది', closed:'షాప్ మూసివేయబడింది',
+    c1title:'మీ టోకెన్ బుక్ చేయండి', c1sub:'ప్రారంభించడానికి మీ మొబైల్ నంబర్ నమోదు చేయండి',
+    c1note:'📋 టోకెన్ తప్పనిసరి. వాక్-ఇన్‌లు కౌంటర్‌లో అంగీకరించబడవు.',
+    c1label:'మొబైల్ నంబర్', c1btn:'కొనసాగించు →', checkStatusBtn:'🔍 నా టోకెన్ స్థితి తనిఖీ చేయండి',
+    c2title:'సేవను ఎంచుకోండి', c2sub:'మీకు ఏమి ప్రింట్ చేయాలో ఎంచుకోండి',
+    busyTitle:'🔥 షాప్ ఇప్పుడు బిజీగా ఉంది',
+    pagesLabel:'పేజీల సంఖ్య', pagesLbl:'పేజీలు',
+    csService:'సేవ', csPages:'పేజీలు', csUnits:'యూనిట్లు', csTotal:'అంచనా మొత్తం',
+    c2note:'💡 కౌంటర్‌లో చివరి ధర నిర్ణయించబడుతుంది. వచ్చినప్పుడు నగదు లేదా UPI చెల్లించండి.',
+    c2btn:'నా టోకెన్ తీసుకోండి 🎫', c2back:'← వెనక్కి',
+    c3label:'మీ టోకెన్ నంబర్', c3sub:'కౌంటర్‌లో ఇది చూపించండి',
+    queueAhead:'ముందు వ్యక్తులు:', waitTimeLabel:'వేచి ఉండండి:',
+    timerLabel:'టోకెన్ గడువు ముగుస్తుంది:',
+    r1:'ఫోన్', r2:'సేవ', r3:'పేజీలు', r4:'యూనిట్లు', r5:'బుక్ చేసిన సమయం',
+    c3warn:'⚠️ కౌంటర్‌లో చెల్లించండి (నగదు లేదా UPI). టోకెన్ 2 గంటలు మాత్రమే చెల్లుబాటు అవుతుంది.',
+    saveBtn:'📥 టోకెన్ సేవ్ చేయండి', shareBtn:'📎 WhatsApp లో ఫైల్స్ పంపండి', c3more:'🔄 మరొక టోకెన్ బుక్ చేయండి',
+    langBtn:'EN', inQueue:'క్యూలో',
+    closedTitle:'షాప్ మూసివేయబడింది', closedSub:'మేము ఉదయం 9 గంటలు – రాత్రి 9 గంటలు తెరిచి ఉంటాము.',
+    busyWarn:'మంది క్యూలో ఉన్నారు. వేచి ఉండే సమయం: ~',
+    busyWarnEnd:'నిమిషాలు. మీరు ఇంకా బుక్ చేయవచ్చు.',
+    checkTitle:'టోకెన్ స్థితి', noToken:'ఈ నంబర్‌కు చురుకైన టోకెన్ కనుగొనబడలేదు.',
+    expiredToken:'మీ టోకెన్ గడువు ముగిసింది. దయచేసి మళ్ళీ బుక్ చేయండి.',
+    tokenActive:'మీ టోకెన్ చురుకుగా ఉంది!',
+    aheadText:'మీ ముందు వ్యక్తులు',
+    waitText:'అంచనా వేచి ఉండే సమయం',
+    delivTitle:'డెలివరీ లొకేషన్',
+    delivSub:'ఐచ్ఛికం — KKB దగ్గర డెలివరీ చేయించుకోండి',
+    delivPickLabel:'డ్రాప్ పాయింట్ ఎంచుకోండి',
+    delivNote:'⚡ డెలివరీ అందుబాటుపై ఆధారపడి ఉంటుంది. అదనపు చార్జీలు వర్తించవచ్చు.',
+    r6:'డెలివరీ',
+  }
+};
+
+function t(key) { return T[lang][key] || T['en'][key] || key; }
+
+function applyLang() {
+  document.getElementById('langBtn').textContent = t('langBtn');
+  document.getElementById('logoSub').textContent = t('logoSub');
+  document.getElementById('c1title').textContent = t('c1title');
+  document.getElementById('c1sub').textContent = t('c1sub');
+  document.getElementById('c1note').textContent = t('c1note');
+  document.getElementById('c1label').textContent = t('c1label');
+  document.getElementById('c1btn').textContent = t('c1btn');
+  document.getElementById('checkStatusBtn').textContent = t('checkStatusBtn');
+  document.getElementById('c2title').textContent = t('c2title');
+  document.getElementById('c2sub').textContent = t('c2sub');
+  document.getElementById('csUnits').textContent = t('csUnits');
+  document.getElementById('csTotal').textContent = t('csTotal');
+  document.getElementById('c2note').textContent = t('c2note');
+  document.getElementById('c2btn').textContent = t('c2btn');
+  document.getElementById('c2back').textContent = t('c2back');
+  document.getElementById('c3label').textContent = t('c3label');
+  document.getElementById('c3sub').textContent = t('c3sub');
+  document.getElementById('timerLabel').textContent = t('timerLabel');
+  document.getElementById('r1').textContent = t('r1');
+  document.getElementById('r2').textContent = t('r2');
+  document.getElementById('r3').textContent = t('r3');
+  document.getElementById('r4').textContent = t('r4');
+  document.getElementById('r5').textContent = t('r5');
+  document.getElementById('r6').textContent = t('r6');
+  document.getElementById('c3warn').textContent = t('c3warn');
+  document.getElementById('saveBtn').textContent = t('saveBtn');
+  document.getElementById('shareBtn').textContent = t('shareBtn');
+  document.getElementById('c3more').textContent = t('c3more');
+  document.getElementById('queueAhead').innerHTML = t('queueAhead') + ' <span id="aheadNum">' + getAheadCount() + '</span>';
+  document.getElementById('waitTimeLabel').innerHTML = t('waitTimeLabel') + ' <span id="waitTimeVal">~' + getWaitTime() + ' min</span>';
+  document.getElementById('delivTitle').textContent = t('delivTitle');
+  document.getElementById('delivSub').textContent = t('delivSub');
+  document.getElementById('delivPickLabel').textContent = t('delivPickLabel');
+  document.getElementById('delivNote').textContent = t('delivNote');
+  buildServiceGrid();
+  buildLocationGrid();
+}
+
+function toggleLang() {
+  lang = lang === 'en' ? 'te' : 'en';
+  applyLang();
+}
+
+// ── QUEUE STORAGE ─────────────────────────────────────────────────────
+function getQueue() {
+  try { return JSON.parse(localStorage.getItem('ns_queue') || '[]'); } catch { return []; }
+}
+function saveQueue(q) { localStorage.setItem('ns_queue', JSON.stringify(q)); }
+function getNextTokenNum() {
+  if (!window._tokenCounter) {
+    // Seed from time so refreshes don't restart at 1 mid-day
+    const mins = new Date().getHours() * 60 + new Date().getMinutes();
+    window._tokenCounter = 0;
+  }
+  window._tokenCounter += 1;
+  return window._tokenCounter;
+}
+function getActiveQueue() {
+  const now = Date.now();
+  return getQueue().filter(t => t.expiresAt > now && !t.served);
+}
+function getAheadCount() { return Math.max(0, getActiveQueue().length); }
+function getWaitTime() { return Math.max(5, getAheadCount() * 5); }
+
+// ── SHOP STATUS ───────────────────────────────────────────────────────
+function isShopOpen() { return true; }
+function updateStatusBar() {
+  const open = isShopOpen();
+  const active = getActiveQueue();
+  const count = active.length;
+  const statusDot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+  const queueCount = document.getElementById('queueCount');
+  const busyBadge = document.getElementById('busyBadge');
+
+  statusDot.style.background = open ? 'var(--green)' : 'var(--red)';
+  statusDot.style.boxShadow = open ? '0 0 8px var(--green)' : '0 0 8px var(--red)';
+  statusText.textContent = open ? t('open') : t('closed');
+  queueCount.textContent = count + ' ' + t('inQueue');
+  busyBadge.style.display = count >= BUSY_THRESHOLD ? 'block' : 'none';
+
+  // busy warning on card2
+  const bw = document.getElementById('busyWarning');
+  const bws = document.getElementById('busyWarnSub');
+  if (count >= BUSY_THRESHOLD) {
+    bw.style.display = 'block';
+    bws.textContent = count + ' ' + t('busyWarn') + getWaitTime() + t('busyWarnEnd');
+  } else {
+    bw.style.display = 'none';
+  }
+}
+
+// ── PHONE VALIDATION ──────────────────────────────────────────────────
+function validatePhone() {
+  const val = document.getElementById('phoneInput').value.replace(/\D/g,'');
+  document.getElementById('c1btn').disabled = val.length !== 10;
+}
+
+// ── SERVICE GRID ──────────────────────────────────────────────────────
+function buildServiceGrid() {
+  const grid = document.getElementById('serviceGrid');
+  grid.innerHTML = '';
+  SERVICES.forEach(s => {
+    const isSelected = !!selectedServices[s.id];
+    const div = document.createElement('div');
+    div.className = 'service-card' + (isSelected ? ' selected' : '');
+    div.style.position = 'relative';
+    div.onclick = () => toggleService(s);
+    const svcName = lang === 'te' ? s.nameTe : s.name;
+    let priceText;
+    if (s.isLam) {
+      const lamSz = LAM_SIZES.find(x => x.id === selectedLamSize) || LAM_SIZES[1];
+      const szLabel = lang === 'te' ? lamSz.labelTe : lamSz.label;
+      priceText = '₹' + lamSz.price + '/sheet · ' + szLabel;
+    } else if (s.isBind) {
+      const bt = BIND_TYPES.find(x => x.id === selectedBindType) || BIND_TYPES[0];
+      const btLabel = lang === 'te' ? bt.labelTe : bt.label;
+      priceText = '₹' + bt.price + '/set · ' + btLabel;
+    } else if (s.isSticker) {
+      const st = STICKER_TYPES.find(x => x.id === selectedStickerType) || STICKER_TYPES[0];
+      const stLabel = lang === 'te' ? st.labelTe : st.label;
+      priceText = '₹' + st.price + '/pc · ' + stLabel;
+    } else if (s.id === 'bw') {
+      const bwSz = BW_SIZES.find(x => x.id === selectedBwSize) || BW_SIZES[0];
+      const szLabel = lang === 'te' ? bwSz.labelTe : bwSz.label;
+      priceText = '₹' + bwSz.price + '/page · ' + szLabel;
+    } else if (s.id === 'colour') {
+      const cSz = COLOUR_SIZES.find(x => x.id === selectedColourSize) || COLOUR_SIZES[0];
+      const szLabel = lang === 'te' ? cSz.labelTe : cSz.label;
+      priceText = '₹' + cSz.price + '/page · ' + szLabel;
+    } else {
+      priceText = s.perPage ? '₹' + s.price + '/page' : '₹' + s.price + '/piece';
+    }
+    const badge = isSelected
+      ? '<span style="position:absolute;top:7px;right:7px;background:var(--red);border-radius:50%;width:22px;height:22px;font-size:13px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;line-height:1;box-shadow:0 2px 6px rgba(255,68,68,0.4);">✕</span>'
+      : '';
+    const addHint = !isSelected
+      ? '<div style="font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:0.3px;">tap to add</div>'
+      : '<div style="font-size:10px;color:var(--red);margin-top:4px;letter-spacing:0.3px;">tap to remove</div>';
+    div.innerHTML = `${badge}<div class="svc-icon">${s.icon}</div><div class="svc-name">${svcName}</div><div class="svc-price">${priceText}</div>${addHint}`;
+    grid.appendChild(div);
+  });
+}
+
+function toggleService(s) {
+  if (selectedServices[s.id] !== undefined) {
+    delete selectedServices[s.id];
+  } else {
+    const minP = s.isLam || s.isBind || s.isSticker ? 1 : Math.ceil(4 / s.units);
+    selectedServices[s.id] = minP;
+  }
+  buildServiceGrid();
+  buildMultiPages();
+  const hasAny = Object.keys(selectedServices).length > 0;
+  document.getElementById('noteSection').style.display = hasAny ? 'block' : 'none';
+  document.getElementById('c2btn').disabled = !hasAny;
+  updateCost();
+}
+
+function changeLamSize(sizeId) {
+  selectedLamSize = sizeId;
+  buildServiceGrid();
+  buildMultiPages();
+  updateCost();
+}
+
+function changeBindType(typeId) {
+  selectedBindType = typeId;
+  buildServiceGrid();
+  buildMultiPages();
+  updateCost();
+}
+
+function changeStickerType(typeId) {
+  selectedStickerType = typeId;
+  buildServiceGrid();
+  buildMultiPages();
+  updateCost();
+}
+
+function changeBwSize(sizeId) {
+  selectedBwSize = sizeId;
+  buildServiceGrid();
+  buildMultiPages();
+  updateCost();
+}
+
+function changeColourSize(sizeId) {
+  selectedColourSize = sizeId;
+  buildServiceGrid();
+  buildMultiPages();
+  updateCost();
+}
+
+function buildMultiPages() {
+  const container = document.getElementById('multiPagesSection');
+  container.innerHTML = '';
+  SERVICES.forEach(s => {
+    if (selectedServices[s.id] === undefined) return;
+    const minP = s.isLam || s.isBind ? 1 : Math.ceil(4 / s.units);
+    const currentP = selectedServices[s.id];
+    const svcName = lang === 'te' ? s.nameTe : s.name;
+    const wrapper = document.createElement('div');
+    wrapper.style.marginBottom = '14px';
+
+    if (s.isLam) {
+      // Size selector buttons + sheet counter
+      const sizeButtons = LAM_SIZES.map(sz => {
+        const szLabel = lang === 'te' ? sz.labelTe : sz.label;
+        const isActive = selectedLamSize === sz.id;
+        return `<button onclick="changeLamSize('${sz.id}')" style="flex:1;padding:8px 6px;border-radius:10px;border:1.5px solid ${isActive ? 'var(--accent)' : 'var(--border)'};background:${isActive ? 'rgba(255,107,43,0.12)' : 'var(--surface3)'};color:${isActive ? 'var(--accent)' : 'var(--muted2)'};font-size:12px;font-weight:${isActive ? '800' : '600'};font-family:'Outfit',sans-serif;cursor:pointer;transition:all 0.15s;">
+          <div style="font-size:15px;margin-bottom:2px;">${sz.label === 'Up to A5' ? '🗂️' : sz.label === 'A4' ? '📄' : '📋'}</div>
+          <div>${szLabel}</div>
+          <div style="font-size:11px;color:${isActive ? 'var(--accent)' : 'var(--muted)'};">₹${sz.price}</div>
+        </button>`;
+      }).join('');
+
+      wrapper.innerHTML = `
+        <label class="input-label">${s.icon} ${svcName} — Size</label>
+        <div style="display:flex;gap:8px;margin-bottom:12px;">${sizeButtons}</div>
+        <label class="input-label">${s.icon} ${svcName} — Number of sheets</label>
+        <div class="pages-row">
+          <button class="pages-btn" onclick="changeServicePage('${s.id}',-1)">−</button>
+          <div style="flex:1;text-align:center;">
+            <input type="number" id="pagesNum_${s.id}"
+              style="width:80px;background:transparent;border:none;border-bottom:2px solid var(--accent);border-radius:0;padding:4px 0;font-size:26px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--text);text-align:center;outline:none;-webkit-appearance:none;appearance:none;"
+              value="${currentP}" min="${minP}"
+              oninput="manualServicePage('${s.id}',this.value)"
+              onfocus="this.select()"
+              onblur="enforceServiceMin('${s.id}',this,${minP})">
+            <div class="pages-label">sheets</div>
+          </div>
+          <button class="pages-btn" onclick="changeServicePage('${s.id}',1)">+</button>
+        </div>`;
+    } else if (s.isBind) {
+      // Binding type selector buttons + sets counter
+      const typeButtons = BIND_TYPES.map(bt => {
+        const btLabel = lang === 'te' ? bt.labelTe : bt.label;
+        const isActive = selectedBindType === bt.id;
+        return `<button onclick="changeBindType('${bt.id}')" style="flex:1;padding:10px 8px;border-radius:10px;border:1.5px solid ${isActive ? 'var(--accent)' : 'var(--border)'};background:${isActive ? 'rgba(255,107,43,0.12)' : 'var(--surface3)'};color:${isActive ? 'var(--accent)' : 'var(--muted2)'};font-size:12px;font-weight:${isActive ? '800' : '600'};font-family:'Outfit',sans-serif;cursor:pointer;transition:all 0.15s;text-align:center;">
+          <div style="font-size:18px;margin-bottom:4px;">${bt.icon}</div>
+          <div style="margin-bottom:2px;">${btLabel}</div>
+          <div style="font-size:13px;font-weight:900;color:${isActive ? 'var(--accent)' : 'var(--muted)'};">₹${bt.price}</div>
+        </button>`;
+      }).join('');
+
+      wrapper.innerHTML = `
+        <label class="input-label">${s.icon} ${svcName} — Type</label>
+        <div style="display:flex;gap:10px;margin-bottom:12px;">${typeButtons}</div>
+        <label class="input-label">${s.icon} ${svcName} — Number of sets</label>
+        <div class="pages-row">
+          <button class="pages-btn" onclick="changeServicePage('${s.id}',-1)">−</button>
+          <div style="flex:1;text-align:center;">
+            <input type="number" id="pagesNum_${s.id}"
+              style="width:80px;background:transparent;border:none;border-bottom:2px solid var(--accent);border-radius:0;padding:4px 0;font-size:26px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--text);text-align:center;outline:none;-webkit-appearance:none;appearance:none;"
+              value="${currentP}" min="1"
+              oninput="manualServicePage('${s.id}',this.value)"
+              onfocus="this.select()"
+              onblur="enforceServiceMin('${s.id}',this,1)">
+            <div class="pages-label">sets</div>
+          </div>
+          <button class="pages-btn" onclick="changeServicePage('${s.id}',1)">+</button>
+        </div>`;
+    } else if (s.isSticker) {
+      // Sticker type selector + quantity counter
+      const typeButtons = STICKER_TYPES.map(st => {
+        const stLabel = lang === 'te' ? st.labelTe : st.label;
+        const isActive = selectedStickerType === st.id;
+        return `<button onclick="changeStickerType('${st.id}')" style="flex:1;padding:10px 8px;border-radius:10px;border:1.5px solid ${isActive ? 'var(--accent)' : 'var(--border)'};background:${isActive ? 'rgba(255,107,43,0.12)' : 'var(--surface3)'};color:${isActive ? 'var(--accent)' : 'var(--muted2)'};font-size:12px;font-weight:${isActive ? '800' : '600'};font-family:'Outfit',sans-serif;cursor:pointer;transition:all 0.15s;text-align:center;">
+          <div style="font-size:18px;margin-bottom:4px;">${st.icon}</div>
+          <div style="margin-bottom:2px;">${stLabel}</div>
+          <div style="font-size:13px;font-weight:900;color:${isActive ? 'var(--accent)' : 'var(--muted)'};">₹${st.price}/pc</div>
+        </button>`;
+      }).join('');
+
+      wrapper.innerHTML = `
+        <label class="input-label">${s.icon} ${svcName} — Type</label>
+        <div style="display:flex;gap:10px;margin-bottom:12px;">${typeButtons}</div>
+        <label class="input-label">${s.icon} ${svcName} — Number of pieces</label>
+        <div class="pages-row">
+          <button class="pages-btn" onclick="changeServicePage('${s.id}',-1)">−</button>
+          <div style="flex:1;text-align:center;">
+            <input type="number" id="pagesNum_${s.id}"
+              style="width:80px;background:transparent;border:none;border-bottom:2px solid var(--accent);border-radius:0;padding:4px 0;font-size:26px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--text);text-align:center;outline:none;-webkit-appearance:none;appearance:none;"
+              value="${currentP}" min="1"
+              oninput="manualServicePage('${s.id}',this.value)"
+              onfocus="this.select()"
+              onblur="enforceServiceMin('${s.id}',this,1)">
+            <div class="pages-label">pieces</div>
+          </div>
+          <button class="pages-btn" onclick="changeServicePage('${s.id}',1)">+</button>
+        </div>`;
+    } else if (s.id === 'bw') {
+      const sizeButtons = BW_SIZES.map(sz => {
+        const szLabel = lang === 'te' ? sz.labelTe : sz.label;
+        const isActive = selectedBwSize === sz.id;
+        return `<button onclick="changeBwSize('${sz.id}')" style="flex:1;padding:8px 6px;border-radius:10px;border:1.5px solid ${isActive ? 'var(--accent)' : 'var(--border)'};background:${isActive ? 'rgba(255,107,43,0.12)' : 'var(--surface3)'};color:${isActive ? 'var(--accent)' : 'var(--muted2)'};font-size:12px;font-weight:${isActive ? '800' : '600'};font-family:'Outfit',sans-serif;cursor:pointer;transition:all 0.15s;">
+          <div style="font-size:15px;margin-bottom:2px;">${sz.icon}</div>
+          <div>${szLabel}</div>
+          <div style="font-size:11px;color:${isActive ? 'var(--accent)' : 'var(--muted)'};">₹${sz.price}</div>
+        </button>`;
+      }).join('');
+      wrapper.innerHTML = `
+        <label class="input-label">${s.icon} ${lang === 'te' ? s.nameTe : s.name} — Size</label>
+        <div style="display:flex;gap:8px;margin-bottom:12px;">${sizeButtons}</div>
+        <label class="input-label">${s.icon} ${lang === 'te' ? s.nameTe : s.name} — ${t('pagesLabel')}</label>
+        <div class="pages-row">
+          <button class="pages-btn" onclick="changeServicePage('${s.id}',-1)">−</button>
+          <div style="flex:1;text-align:center;">
+            <input type="number" id="pagesNum_${s.id}"
+              style="width:80px;background:transparent;border:none;border-bottom:2px solid var(--accent);border-radius:0;padding:4px 0;font-size:26px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--text);text-align:center;outline:none;-webkit-appearance:none;appearance:none;"
+              value="${currentP}" min="${minP}"
+              oninput="manualServicePage('${s.id}',this.value)"
+              onfocus="this.select()"
+              onblur="enforceServiceMin('${s.id}',this,${minP})">
+            <div class="pages-label">${s.pageLabel || 'pages'}</div>
+          </div>
+          <button class="pages-btn" onclick="changeServicePage('${s.id}',1)">+</button>
+        </div>`;
+    } else if (s.id === 'colour') {
+      const sizeButtons = COLOUR_SIZES.map(sz => {
+        const szLabel = lang === 'te' ? sz.labelTe : sz.label;
+        const isActive = selectedColourSize === sz.id;
+        return `<button onclick="changeColourSize('${sz.id}')" style="flex:1;padding:8px 6px;border-radius:10px;border:1.5px solid ${isActive ? 'var(--accent)' : 'var(--border)'};background:${isActive ? 'rgba(255,107,43,0.12)' : 'var(--surface3)'};color:${isActive ? 'var(--accent)' : 'var(--muted2)'};font-size:12px;font-weight:${isActive ? '800' : '600'};font-family:'Outfit',sans-serif;cursor:pointer;transition:all 0.15s;">
+          <div style="font-size:15px;margin-bottom:2px;">${sz.icon}</div>
+          <div>${szLabel}</div>
+          <div style="font-size:11px;color:${isActive ? 'var(--accent)' : 'var(--muted)'};">₹${sz.price}</div>
+        </button>`;
+      }).join('');
+      wrapper.innerHTML = `
+        <label class="input-label">${s.icon} ${lang === 'te' ? s.nameTe : s.name} — Size</label>
+        <div style="display:flex;gap:8px;margin-bottom:12px;">${sizeButtons}</div>
+        <label class="input-label">${s.icon} ${lang === 'te' ? s.nameTe : s.name} — ${t('pagesLabel')}</label>
+        <div class="pages-row">
+          <button class="pages-btn" onclick="changeServicePage('${s.id}',-1)">−</button>
+          <div style="flex:1;text-align:center;">
+            <input type="number" id="pagesNum_${s.id}"
+              style="width:80px;background:transparent;border:none;border-bottom:2px solid var(--accent);border-radius:0;padding:4px 0;font-size:26px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--text);text-align:center;outline:none;-webkit-appearance:none;appearance:none;"
+              value="${currentP}" min="${minP}"
+              oninput="manualServicePage('${s.id}',this.value)"
+              onfocus="this.select()"
+              onblur="enforceServiceMin('${s.id}',this,${minP})">
+            <div class="pages-label">${s.pageLabel || 'pages'}</div>
+          </div>
+          <button class="pages-btn" onclick="changeServicePage('${s.id}',1)">+</button>
+        </div>`;
+    } else {
+      wrapper.innerHTML = `
+        <label class="input-label">${s.icon} ${lang === 'te' ? s.nameTe : s.name} — ${t('pagesLabel')}</label>
+        <div class="pages-row">
+          <button class="pages-btn" onclick="changeServicePage('${s.id}',-1)">−</button>
+          <div style="flex:1;text-align:center;">
+            <input type="number" id="pagesNum_${s.id}"
+              style="width:80px;background:transparent;border:none;border-bottom:2px solid var(--accent);border-radius:0;padding:4px 0;font-size:26px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--text);text-align:center;outline:none;-webkit-appearance:none;appearance:none;"
+              value="${currentP}" min="${minP}"
+              oninput="manualServicePage('${s.id}',this.value)"
+              onfocus="this.select()"
+              onblur="enforceServiceMin('${s.id}',this,${minP})">
+            <div class="pages-label">${s.pageLabel || 'pages'}</div>
+          </div>
+          <button class="pages-btn" onclick="changeServicePage('${s.id}',1)">+</button>
+        </div>`;
+    }
+    container.appendChild(wrapper);
+  });
+}
+
+function changeServicePage(id, delta) {
+  const s = SERVICES.find(x => x.id === id);
+  const minP = s.isLam || s.isBind || s.isSticker ? 1 : Math.ceil(4 / s.units);
+  selectedServices[id] = Math.max(minP, Math.min(500, (selectedServices[id] || minP) + delta));
+  const el = document.getElementById('pagesNum_' + id);
+  if (el) el.value = selectedServices[id];
+  updateCost();
+}
+
+function manualServicePage(id, val) {
+  let n = parseInt(val, 10);
+  if (isNaN(n) || n < 1) return;
+  if (n > 500) { n = 500; document.getElementById('pagesNum_' + id).value = 500; }
+  selectedServices[id] = n;
+  updateCost();
+}
+
+function enforceServiceMin(id, input, minP) {
+  let n = parseInt(input.value, 10);
+  if (isNaN(n) || n < minP) n = minP;
+  if (n > 500) n = 500;
+  selectedServices[id] = n;
+  input.value = n;
+  updateCost();
+}
+
+function updateCost() {
+  const ids = Object.keys(selectedServices);
+  if (!ids.length) { document.getElementById('costSummary').style.display = 'none'; return; }
+  let totalUnits = 0, totalPrice = 0, rowsHTML = '';
+  ids.forEach(id => {
+    const s = SERVICES.find(x => x.id === id);
+    const p = selectedServices[id];
+    let units, price, svcDisplayName;
+    if (s.isLam) {
+      const lamSz = LAM_SIZES.find(x => x.id === selectedLamSize) || LAM_SIZES[1];
+      units = lamSz.units * p;
+      price = lamSz.price * p;
+      const szLabel = lang === 'te' ? lamSz.labelTe : lamSz.label;
+      svcDisplayName = (lang === 'te' ? s.nameTe : s.name) + ' (' + szLabel + ')';
+    } else if (s.isBind) {
+      const bt = BIND_TYPES.find(x => x.id === selectedBindType) || BIND_TYPES[0];
+      units = bt.units * p;
+      price = bt.price * p;
+      const btLabel = lang === 'te' ? bt.labelTe : bt.label;
+      svcDisplayName = (lang === 'te' ? s.nameTe : s.name) + ' (' + btLabel + ')';
+    } else if (s.isSticker) {
+      const st = STICKER_TYPES.find(x => x.id === selectedStickerType) || STICKER_TYPES[0];
+      units = st.units * p;
+      price = st.price * p;
+      const stLabel = lang === 'te' ? st.labelTe : st.label;
+      svcDisplayName = (lang === 'te' ? s.nameTe : s.name) + ' (' + stLabel + ')';
+    } else if (s.id === 'bw') {
+      const bwSz = BW_SIZES.find(x => x.id === selectedBwSize) || BW_SIZES[0];
+      units = bwSz.units * p;
+      price = bwSz.price * p;
+      const szLabel = lang === 'te' ? bwSz.labelTe : bwSz.label;
+      svcDisplayName = (lang === 'te' ? s.nameTe : s.name) + ' (' + szLabel + ')';
+    } else if (s.id === 'colour') {
+      const cSz = COLOUR_SIZES.find(x => x.id === selectedColourSize) || COLOUR_SIZES[0];
+      units = cSz.units * p;
+      price = cSz.price * p;
+      const szLabel = lang === 'te' ? cSz.labelTe : cSz.label;
+      svcDisplayName = (lang === 'te' ? s.nameTe : s.name) + ' (' + szLabel + ')';
+    } else {
+      units = s.perPage ? s.units * p : s.units;
+      price = units * UNIT_PRICE;
+      svcDisplayName = lang === 'te' ? s.nameTe : s.name;
+    }
+    totalUnits += units;
+    totalPrice += price;
+    rowsHTML += `<div class="cost-row"><span class="cost-label">${s.icon} ${svcDisplayName}</span><span class="cost-val">${p} ${s.isBind ? 'sets' : s.isLam ? 'sheets' : s.isSticker ? 'pcs' : (s.pageLabel || 'pages')} · ₹${price.toFixed(2)}</span></div>`;
+  });
+  document.getElementById('costRows').innerHTML = rowsHTML;
+  document.getElementById('csUnitsVal').textContent = totalUnits + ' units';
+  document.getElementById('csTotalVal').textContent = '₹' + totalPrice.toFixed(2);
+  document.getElementById('costSummary').style.display = 'block';
+}
+
+// ── DELIVERY LOCATION ─────────────────────────────────────────────────
+function buildLocationGrid() {
+  const grid = document.getElementById('locationGrid');
+  if (!grid) return;
+  grid.innerHTML = DELIVERY_LOCATIONS.map(loc => {
+    const name = lang === 'te' ? loc.nameTe : loc.name;
+    const isSelected = selectedDelivery === loc.id;
+    return `<div class="location-item${isSelected ? ' selected' : ''}" onclick="selectLocation('${loc.id}')">
+      <span class="loc-icon">${loc.icon}</span>
+      <div style="flex:1;min-width:0;">
+        <div class="loc-name">${name}</div>
+        <div class="loc-tag">${loc.tag}</div>
+      </div>
+      <div class="loc-check">${isSelected ? '✓' : ''}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectLocation(id) {
+  selectedDelivery = selectedDelivery === id ? null : id;
+  buildLocationGrid();
+}
+
+function toggleDelivery() {
+  const cb = document.getElementById('delivToggle');
+  const panel = document.getElementById('deliveryLocations');
+  const open = !panel.classList.contains('open');
+  cb.checked = open;
+  panel.classList.toggle('open', open);
+  if (!open) {
+    selectedDelivery = null;
+    buildLocationGrid();
+  } else {
+    buildLocationGrid();
+  }
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────────────
+function goStep(n) {
+  currentStep = n;
+  document.querySelectorAll('.card').forEach((c,i) => {
+    c.classList.toggle('active', i+1 === n);
+  });
+  ['dot1','dot2','dot3'].forEach((id,i) => {
+    const d = document.getElementById(id);
+    d.className = 'step-dot' + (i+1 < n ? ' done' : i+1 === n ? ' active' : '');
+  });
+  // Show step dots only on steps 1-3
+  window.scrollTo({top:0,behavior:'smooth'});
+  updateStatusBar();
+}
+
+function goToStep2() {
+  const phone = document.getElementById('phoneInput').value.replace(/\D/g,'');
+  if (phone.length !== 10) return;
+  selectedServices = {};
+  selectedDelivery = null;
+  document.getElementById('delivToggle').checked = false;
+  document.getElementById('deliveryLocations').classList.remove('open');
+  document.getElementById('multiPagesSection').innerHTML = '';
+  document.getElementById('costSummary').style.display = 'none';
+  document.getElementById('noteSection').style.display = 'none';
+  buildServiceGrid();
+  goStep(2);
+}
+
+// ── BOOK TOKEN ────────────────────────────────────────────────────────
+function bookToken() {
+  const ids = Object.keys(selectedServices);
+  if (!ids.length) return;
+  const phone = document.getElementById('phoneInput').value.replace(/\D/g,'');
+  const tokenNum = getNextTokenNum();
+  const tokenStr = 'T-' + String(tokenNum).padStart(3, '0');
+  const now = new Date();
+  const timeStr = now.toLocaleString('en-IN', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const expiresAt = now.getTime() + TOKEN_EXPIRY_MINS * 60 * 1000;
+
+  // Build combined service summary
+  let totalUnits = 0, totalPrice = 0;
+  const svcLines = [];
+  ids.forEach(id => {
+    const s = SERVICES.find(x => x.id === id);
+    const p = selectedServices[id];
+    let units, price, displayName;
+    if (s.isLam) {
+      const lamSz = LAM_SIZES.find(x => x.id === selectedLamSize) || LAM_SIZES[1];
+      units = lamSz.units * p;
+      price = lamSz.price * p;
+      displayName = s.name + ' ' + lamSz.label;
+    } else if (s.isBind) {
+      const bt = BIND_TYPES.find(x => x.id === selectedBindType) || BIND_TYPES[0];
+      units = bt.units * p;
+      price = bt.price * p;
+      displayName = bt.label;
+    } else if (s.isSticker) {
+      const st = STICKER_TYPES.find(x => x.id === selectedStickerType) || STICKER_TYPES[0];
+      units = st.units * p;
+      price = st.price * p;
+      displayName = st.label;
+    } else if (s.id === 'bw') {
+      const bwSz = BW_SIZES.find(x => x.id === selectedBwSize) || BW_SIZES[0];
+      units = bwSz.units * p;
+      price = bwSz.price * p;
+      displayName = s.name + ' ' + bwSz.label;
+    } else if (s.id === 'colour') {
+      const cSz = COLOUR_SIZES.find(x => x.id === selectedColourSize) || COLOUR_SIZES[0];
+      units = cSz.units * p;
+      price = cSz.price * p;
+      displayName = s.name + ' ' + cSz.label;
+    } else {
+      units = s.perPage ? s.units * p : s.units;
+      price = units * UNIT_PRICE;
+      displayName = s.name;
+    }
+    totalUnits += units;
+    totalPrice += price;
+    svcLines.push({ s, p, units, price, displayName });
+  });
+  const svcNames = svcLines.map(x => x.displayName).join(' + ');
+  const svcNoteLines = svcLines.map(x => x.displayName + ': ' + x.p + (x.s.isLam ? ' sheets' : ' pages')).join('\n');
+
+  // Save to queue
+  const q = getQueue();
+  q.push({ token: tokenStr, phone, service: ids.join('+'), svcName: svcNames, pages: svcLines.map(x=>x.p).join('+'), units: totalUnits, price: totalPrice, bookedAt: now.getTime(), expiresAt, served: false });
+  saveQueue(q);
+
+  // Save to booking history
+  saveHistory({ token: tokenStr, phone, svcName: svcNames, pages: svcLines.map(x=>x.p).reduce((a,b)=>a+b,0), units: totalUnits, price: totalPrice, bookedAt: now.getTime(), timeStr });
+
+  window._lastTotalPrice = totalPrice;
+  window._lastPhone = phone;
+
+  // Update receipt UI
+  document.getElementById('tokenNum').textContent = tokenStr;
+  document.getElementById('rPhone').textContent = '+91 ' + phone;
+  document.getElementById('rService').textContent = svcNames;
+  document.getElementById('rPages').textContent = svcLines.map(x => x.displayName + ': ' + x.p + (x.s.isBind ? 'set' : x.s.isLam ? 's' : x.s.isSticker ? 'pc' : 'p')).join(' | ');
+  document.getElementById('rPagesRow').style.display = 'flex';
+  document.getElementById('rAmount').textContent = totalUnits + ' units';
+  document.getElementById('rTime').textContent = timeStr;
+
+  // Delivery location
+  const delivRow = document.getElementById('rDelivRow');
+  const delivVal = document.getElementById('rDeliv');
+  if (selectedDelivery) {
+    const loc = DELIVERY_LOCATIONS.find(x => x.id === selectedDelivery);
+    const locName = lang === 'te' ? loc.nameTe : loc.name;
+    delivVal.textContent = loc.icon + ' ' + locName + ' — ' + loc.tag;
+    delivRow.style.display = 'flex';
+  } else {
+    delivRow.style.display = 'none';
+  }
+
+  // Queue info
+  const ahead = Math.max(0, getActiveQueue().length - 1);
+  document.getElementById('aheadNum').textContent = ahead;
+  document.getElementById('waitTimeVal').textContent = ahead === 0 ? 'Now!' : '~' + Math.max(5, ahead * 5) + ' min';
+  document.getElementById('youreNextBanner').style.display = ahead === 0 ? 'block' : 'none';
+  const readyMins = Math.max(5, ahead * 5);
+  const readyTime = new Date(Date.now() + readyMins * 60000);
+  const readyStr = readyTime.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+  document.getElementById('readyTimeText').textContent = ahead === 0 ? 'Head to the counter now!' : 'Ready by ~' + readyStr;
+
+  // Start expiry timer
+  startTimer(expiresAt);
+
+  // Play booking chime
+  playBookingChime();
+
+  // Start live queue polling
+  liveQueuePoll._chimePlayed = false;
+  startLiveQueuePoll(tokenStr);
+
+  // Telegram message
+  window._customerMsgRaw =
+'✅ Token Confirmed!\n\n' +
+'🎫 Token: ' + tokenStr + '\n' +
+'💰 Amount: Rs.' + totalPrice + '\n\n' +
+'Show this token at NativeSaver counter.\n' +
+'Thank you! 😊';
+
+  const unavailMsg =
+'❌ Service Unavailable — NativeSaver\n\n' +
+'Sorry, we are currently unable to serve your request.\n' +
+'Please try again later.\n\n' +
+'We apologise for the inconvenience. 🙏';
+
+  sendTelegram(
+'🎫 New Token!\n\n' +
+'Token: ' + tokenStr + '\n' +
+'Phone: +91' + phone + '\n' +
+'Services:\n' + svcNoteLines + '\n' +
+'Units: ' + totalUnits + ' units\n' +
+'Amount: Rs.' + totalPrice + '\n' +
+(selectedDelivery ? '📍 Delivery: ' + (DELIVERY_LOCATIONS.find(x=>x.id===selectedDelivery)?.name||selectedDelivery) + ' — KKB\n' : '') +
+'Time: ' + timeStr + '\n\n' +
+'✅ Send Confirmed:\n' +
+'https://wa.me/91' + phone + '?text=' + encodeURIComponent(window._customerMsgRaw) + '\n\n' +
+'❌ Send Unavailable:\n' +
+'https://wa.me/91' + phone + '?text=' + encodeURIComponent(unavailMsg)
+  );
+
+  goStep(3);
+}
+
+// ── TIMER ─────────────────────────────────────────────────────────────
+function startTimer(expiresAt) {
+  tokenExpiry = expiresAt;
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    const remaining = tokenExpiry - Date.now();
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      document.getElementById('timerCount').textContent = 'EXPIRED';
+      document.getElementById('expiryTimer').style.background = 'rgba(255,68,68,0.2)';
+      return;
+    }
+    const h = Math.floor(remaining / 3600000);
+    const m = Math.floor((remaining % 3600000) / 60000);
+    const s = Math.floor((remaining % 60000) / 1000);
+    document.getElementById('timerCount').textContent = h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  }, 1000);
+}
+
+// ── CHECK TOKEN STATUS ────────────────────────────────────────────────
+function showCheckStatus() {
+  const s = document.getElementById('checkStatusSection');
+  s.style.display = s.style.display === 'none' ? 'block' : 'none';
+}
+
+function checkTokenStatus() {
+  const phone = document.getElementById('checkPhone').value.replace(/\D/g,'');
+  const result = document.getElementById('checkResult');
+  const q = getActiveQueue();
+  const token = q.find(t => t.phone === phone);
+
+  result.style.display = 'block';
+  if (!token) {
+    result.innerHTML = `<div style="text-align:center;padding:10px;"><div style="font-size:32px;margin-bottom:8px;">🤷</div><div style="font-weight:700;margin-bottom:4px;">${t('noToken')}</div></div>`;
+    return;
+  }
+  const ahead = q.indexOf(token);
+  const wait = Math.max(5, ahead * 5);
+  result.innerHTML = `
+    <div style="text-align:center;">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:4px;text-transform:uppercase;">${t('tokenActive')}</div>
+      <div class="status-token-num">${token.token}</div>
+      <div style="display:flex;justify-content:space-between;margin-top:12px;gap:10px;">
+        <div style="flex:1;background:var(--surface3);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:22px;font-weight:800;">${ahead}</div>
+          <div style="font-size:11px;color:var(--muted);">${t('aheadText')}</div>
+        </div>
+        <div style="flex:1;background:var(--surface3);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:22px;font-weight:800;color:var(--accent);">~${wait}m</div>
+          <div style="font-size:11px;color:var(--muted);">${t('waitText')}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── SAVE / SHARE ──────────────────────────────────────────────────────
+function saveReceipt() {
+  const el = document.getElementById('receiptCapture');
+  html2canvas(el, { scale:2, backgroundColor:'#13131a', useCORS:true }).then(canvas => {
+    const link = document.createElement('a');
+    link.download = 'NativeSaver-' + document.getElementById('tokenNum').textContent + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+}
+
+function shareWhatsApp() {
+  const token = document.getElementById('tokenNum').textContent;
+  const amount = window._lastTotalPrice || '';
+
+  const msg =
+'✅ Token Confirmed!\n\n' +
+'🎫 Token: ' + token + '\n' +
+(amount ? '💰 Amount: Rs.' + amount + '\n' : '') +
+'\nShow this token at NativeSaver counter.\n' +
+'Thank you! 😊';
+
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+
+function sendConfirmedWA() {
+  const phone = window._lastPhone || '';
+  const token = document.getElementById('tokenNum').textContent;
+  const amount = window._lastTotalPrice || '';
+
+  const msg =
+'✅ *Token Confirmed — NativeSaver*\n\n' +
+'🎫 Token: *' + token + '*\n' +
+(amount ? '💰 Amount: *Rs.' + amount + '*\n' : '') +
+'\n📍 Please show this token at the NativeSaver counter.\n' +
+'⏱ Token is valid for *2 hours* from booking time.\n\n' +
+'Thank you! 😊';
+
+  window.open('https://wa.me/91' + phone + '?text=' + encodeURIComponent(msg), '_blank');
+}
+
+function sendUnavailableWA() {
+  const phone = window._lastPhone || '';
+
+  const msg =
+'❌ *Service Unavailable — NativeSaver*\n\n' +
+'Sorry, we are currently *unable to serve* your request at NativeSaver.\n\n' +
+'This may be due to:\n' +
+'• High queue volume\n' +
+'• Technical issue\n' +
+'• Shop closure\n\n' +
+'Please try again later.\n\n' +
+'We apologise for the inconvenience. 🙏';
+
+  window.open('https://wa.me/91' + phone + '?text=' + encodeURIComponent(msg), '_blank');
+}
+
+function bookAnother() {
+  selectedServices = {};
+  selectedDelivery = null;
+  document.getElementById('delivToggle').checked = false;
+  document.getElementById('deliveryLocations').classList.remove('open');
+  document.getElementById('phoneInput').value = '';
+  document.getElementById('c1btn').disabled = true;
+  if (timerInterval) clearInterval(timerInterval);
+  if (notifyTimeout15) clearTimeout(notifyTimeout15);
+  if (notifyTimeout5)  clearTimeout(notifyTimeout5);
+  stopLiveQueuePoll();
+  myTokenStr = null;
+  document.getElementById('youreNextBanner').style.display = 'none';
+  const btn = document.getElementById('notifyBtn');
+  btn.textContent = '🔔 Notify Me Before Expiry';
+  btn.className = 'btn-notify';
+  goStep(1);
+}
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────────────
+let notifyTimeout15 = null;
+let notifyTimeout5  = null;
+
+function enableNotification() {
+  const btn = document.getElementById('notifyBtn');
+  if (!('Notification' in window)) {
+    btn.textContent = '❌ Not supported on this browser';
+    btn.classList.add('denied');
+    return;
+  }
+  if (Notification.permission === 'granted') {
+    scheduleNotifications();
+    btn.textContent = '✅ Notifications Enabled!';
+    btn.classList.add('active');
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    btn.textContent = '🚫 Permission Denied — Enable in Browser Settings';
+    btn.classList.add('denied');
+    return;
+  }
+  Notification.requestPermission().then(permission => {
+    if (permission === 'granted') {
+      scheduleNotifications();
+      btn.textContent = '✅ Notifications Enabled!';
+      btn.classList.add('active');
+    } else {
+      btn.textContent = '🚫 Permission Denied — Enable in Browser Settings';
+      btn.classList.add('denied');
+    }
+  });
+}
+
+function scheduleNotifications() {
+  if (!tokenExpiry) return;
+  const now = Date.now();
+  const token = document.getElementById('tokenNum').textContent;
+
+  // Clear any previous scheduled notifications
+  if (notifyTimeout15) clearTimeout(notifyTimeout15);
+  if (notifyTimeout5)  clearTimeout(notifyTimeout5);
+
+  const t15 = tokenExpiry - now - 15 * 60 * 1000; // 15 min before
+  const t5  = tokenExpiry - now - 5  * 60 * 1000; // 5 min before
+
+  if (t15 > 0) {
+    notifyTimeout15 = setTimeout(() => {
+      new Notification('⏰ NativeSaver Token Expiring Soon', {
+        body: token + ' expires in 15 minutes! Head to the counter now.',
+        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="%23ff6b2b"/><text y="44" x="10" font-size="40">🖨️</text></svg>'
+      });
+    }, t15);
+  }
+  if (t5 > 0) {
+    notifyTimeout5 = setTimeout(() => {
+      new Notification('🚨 NativeSaver Token Almost Expired!', {
+        body: token + ' expires in 5 minutes! Please go to the counter immediately.',
+        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="%23ff4444"/><text y="44" x="10" font-size="40">⏱️</text></svg>'
+      });
+    }, t5);
+  }
+}
+
+
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem('ns_history') || '[]'); } catch { return []; }
+}
+function saveHistory(entry) {
+  const h = getHistory();
+  h.unshift(entry); // newest first
+  if (h.length > 100) h.splice(100); // cap at 100
+  localStorage.setItem('ns_history', JSON.stringify(h));
+}
+
+function showHistory() {
+  const phone = document.getElementById('phoneInput').value.replace(/\D/g,'');
+  const hs = document.getElementById('historySection');
+  const list = document.getElementById('historyList');
+  if (hs.style.display === 'block') { hs.style.display = 'none'; return; }
+  if (phone.length !== 10) {
+    list.innerHTML = `<div style="text-align:center;padding:16px;color:var(--muted);font-size:13px;">Please enter your 10-digit phone number first.</div>`;
+    hs.style.display = 'block';
+    return;
+  }
+  const all = getHistory().filter(h => h.phone === phone);
+  if (!all.length) {
+    list.innerHTML = `<div style="text-align:center;padding:16px;color:var(--muted);font-size:13px;">No bookings found for this number.</div>`;
+  } else {
+    list.innerHTML = all.map(h => `
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:16px;font-weight:900;font-family:'JetBrains Mono',monospace;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${h.token}</span>
+          <span style="font-size:14px;font-weight:800;color:var(--green);">₹${h.price.toFixed(2)}</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted2);">${h.svcName} · ${h.units} units · ${h.timeStr}</div>
+      </div>`).join('');
+  }
+  hs.style.display = 'block';
+}
+
+// ── DAILY SUMMARY ─────────────────────────────────────────────────────
+function getDailyKey() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function getDailySummaryData() {
+  const today = getDailyKey();
+  const all = getHistory();
+  const todayBookings = all.filter(h => {
+    const d = new Date(h.bookedAt);
+    const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    return key === today;
+  });
+  const totalTokens = todayBookings.length;
+  const totalRevenue = todayBookings.reduce((s, h) => s + h.price, 0);
+  const bw = todayBookings.filter(h => h.svcName === 'B&W Print').length;
+  const colour = todayBookings.filter(h => h.svcName === 'Colour Print').length;
+  return { totalTokens, totalRevenue, bw, colour, date: today };
+}
+function sendDailySummary() {
+  const { totalTokens, totalRevenue, bw, colour, date } = getDailySummaryData();
+  if (totalTokens === 0) return; // nothing to report
+  sendTelegram(
+'📊 Daily Summary — NativeSaver\n' +
+'📅 Date: ' + date + '\n\n' +
+'🎫 Total Tokens: ' + totalTokens + '\n' +
+'📄 B&W Print: ' + bw + ' bookings\n' +
+'🎨 Colour Print: ' + colour + ' bookings\n' +
+'💰 Total Revenue: Rs.' + totalRevenue.toFixed(2) + '\n\n' +
+'Shop closed for the day. Good work! 🙌'
+  );
+  localStorage.setItem('ns_summary_sent', getDailyKey());
+}
+function scheduleDailySummary() {
+  setInterval(() => {
+    const now = new Date();
+    // Send at shop close hour (21:00)
+    if (now.getHours() === SHOP_CLOSE && now.getMinutes() === 0) {
+      const sentKey = localStorage.getItem('ns_summary_sent');
+      if (sentKey !== getDailyKey()) sendDailySummary();
+    }
+  }, 60000); // check every minute
+}
+
+// ── SOUND ALERT ───────────────────────────────────────────────────────
+function playBookingChime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5 E5 G5 C6
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const start = ctx.currentTime + i * 0.13;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.18, start + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+      osc.start(start); osc.stop(start + 0.36);
+    });
+  } catch(e) {}
+}
+
+// ── LIVE QUEUE POSITION POLL ──────────────────────────────────────────
+let liveQueueInterval = null;
+let myTokenStr = null;
+
+function startLiveQueuePoll(tokenStr) {
+  myTokenStr = tokenStr;
+  if (liveQueueInterval) clearInterval(liveQueueInterval);
+  liveQueuePoll();
+  liveQueueInterval = setInterval(liveQueuePoll, 15000); // every 15s
+}
+
+function stopLiveQueuePoll() {
+  if (liveQueueInterval) clearInterval(liveQueueInterval);
+  liveQueueInterval = null;
+}
+
+function liveQueuePoll() {
+  if (!myTokenStr) return;
+  const q = getActiveQueue();
+  const idx = q.findIndex(t => t.token === myTokenStr);
+  if (idx === -1) return;
+  const ahead = idx; // 0 = you're next
+
+  document.getElementById('aheadNum').textContent = ahead;
+  document.getElementById('waitTimeVal').textContent = ahead === 0 ? 'Now!' : '~' + Math.max(5, ahead * 5) + ' min';
+
+  // "You're Next" banner
+  const banner = document.getElementById('youreNextBanner');
+  banner.style.display = ahead === 0 ? 'block' : 'none';
+
+  // Estimated ready time
+  const readyMins = Math.max(5, ahead * 5);
+  const readyTime = new Date(Date.now() + readyMins * 60000);
+  const readyStr = readyTime.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+  document.getElementById('readyTimeText').textContent = ahead === 0 ? 'Head to the counter now!' : 'Ready by ~' + readyStr;
+
+  // Chime when user becomes next
+  if (ahead === 0 && !liveQueuePoll._chimePlayed) {
+    liveQueuePoll._chimePlayed = true;
+    playBookingChime();
+  }
+}
+
+// ── SHARE MODAL ───────────────────────────────────────────────────────
+function openShareModal() {
+  document.getElementById('shareModal').classList.add('open');
+}
+function closeShareModal(e) {
+  if (!e || e.target === document.getElementById('shareModal')) {
+    document.getElementById('shareModal').classList.remove('open');
+  }
+}
+function shareTokenImage() {
+  closeShareModal();
+  saveReceipt();
+}
+function shareTokenWhatsApp() {
+  closeShareModal();
+  const token = document.getElementById('tokenNum').textContent;
+  const svc   = document.getElementById('rService').textContent;
+  const time  = document.getElementById('rTime').textContent;
+  const amt   = window._lastTotalPrice ? '₹' + window._lastTotalPrice : '';
+  const msg =
+'🖨️ *NativeSaver — Token Booked!*\n\n' +
+'🎫 Token: *' + token + '*\n' +
+'🛠 Service: ' + svc + '\n' +
+(amt ? '💰 Amount: ' + amt + '\n' : '') +
+'🕐 Booked: ' + time + '\n\n' +
+'Show this token at the NativeSaver counter.\n' +
+'Token valid for 2 hours. 📍';
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+function shareTokenNative() {
+  closeShareModal();
+  const token = document.getElementById('tokenNum').textContent;
+  const svc   = document.getElementById('rService').textContent;
+  const amt   = window._lastTotalPrice ? '₹' + window._lastTotalPrice : '';
+  const text  = 'NativeSaver Token: ' + token + ' | ' + svc + (amt ? ' | ' + amt : '') + ' | Show at counter';
+  if (navigator.share) {
+    navigator.share({ title: 'NativeSaver Token ' + token, text }).catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(text).then(() => alert('Token copied to clipboard!')).catch(()=>{});
+  }
+}
+
+// ── CALL SHOP ─────────────────────────────────────────────────────────
+function callShop() {
+  window.location.href = 'tel:+919000989489';
+}
+
+// ── SEND FILES WHATSAPP (with token pre-filled) ───────────────────────
+function sendFilesWhatsApp() {
+  const token = document.getElementById('tokenNum').textContent;
+  const msg = 'Hi, I want to send my print files 🖨️\nMy Token: *' + token + '*';
+  window.open('https://api.whatsapp.com/send?phone=919000989489&text=' + encodeURIComponent(msg), '_blank');
+}
+
+// ── TELEGRAM ──────────────────────────────────────────────────────────
+function sendTelegram(msg) {
+  fetch('https://api.telegram.org/bot' + TG_TOKEN + '/sendMessage', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ chat_id: TG_CHAT, text: msg })
+  }).catch(()=>{});
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────
+updateStatusBar();
+setInterval(updateStatusBar, 30000);
+scheduleDailySummary();
+document.getElementById('deliveryToggleRow').addEventListener('click', toggleDelivery);
+</script>
+</body>
+</html>
