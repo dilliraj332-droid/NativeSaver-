@@ -1,0 +1,2488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+<title>NativeSaver — Token Booking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root {
+  --bg: #04040f;
+  --surface: #09091b;
+  --surface2: #0f0f24;
+  --surface3: #16163a;
+  --border: rgba(255,255,255,0.055);
+  --border2: rgba(255,255,255,0.10);
+  --text: #f0ecff;
+  --muted: #4a4770;
+  --muted2: #8480b0;
+  --accent: #ff5a1f;
+  --accent2: #ffac00;
+  --accent3: #ff7a40;
+  --green: #00f090;
+  --blue: #4d8cff;
+  --red: #ff3a5c;
+  --yellow: #ffd200;
+  --purple: #a855f7;
+  --grad: linear-gradient(135deg,#ff5a1f 0%,#ffac00 100%);
+  --grad-cool: linear-gradient(135deg,#4d8cff,#a855f7);
+  --grad-green: linear-gradient(135deg,#00f090,#00c070);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html{height:100%;}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:"Plus Jakarta Sans",sans-serif;
+  min-height:100%;overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+/* Grid canvas is drawn via JS — no CSS pseudo grid needed */
+body::after{
+  content:"";position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 80% 60% at 90% 0%,rgba(255,90,31,0.18) 0%,transparent 55%),
+    radial-gradient(ellipse 60% 50% at 0% 100%,rgba(77,140,255,0.12) 0%,transparent 55%),
+    radial-gradient(ellipse 55% 45% at 50% 50%,rgba(168,85,247,0.07) 0%,transparent 70%),
+    radial-gradient(ellipse 40% 35% at 20% 30%,rgba(255,172,0,0.06) 0%,transparent 60%);
+  pointer-events:none;z-index:0;
+}
+.glow-orb{position:fixed;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0;}
+.glow-orb.o1{width:600px;height:600px;background:rgba(255,90,31,0.13);top:-200px;right:-180px;animation:orbFloat1 14s ease-in-out infinite;}
+.glow-orb.o2{width:500px;height:500px;background:rgba(77,140,255,0.10);bottom:0px;left:-180px;animation:orbFloat2 17s ease-in-out infinite;}
+.glow-orb.o3{width:320px;height:320px;background:rgba(168,85,247,0.09);top:35%;right:5%;animation:orbFloat1 20s ease-in-out infinite reverse;}
+.glow-orb.o4{width:200px;height:200px;background:rgba(255,172,0,0.08);top:60%;left:30%;animation:orbFloat2 11s ease-in-out infinite;}
+@keyframes orbFloat1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-30px,20px) scale(1.08)}}
+@keyframes orbFloat2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(20px,-30px) scale(1.06)}}
+
+.app{position:relative;z-index:1;width:100%;max-width:430px;margin:0 auto;padding:0 16px 80px;}
+
+/* HEADER */
+.header{padding:18px 0 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.logo{display:flex;align-items:center;gap:10px;min-width:0;flex:1;}
+.logo > div{min-width:0;overflow:hidden;}
+.logo-icon{
+  width:48px;height:48px;background:var(--grad);border-radius:15px;
+  display:flex;align-items:center;justify-content:center;font-size:24px;
+  box-shadow:0 8px 32px rgba(255,90,31,0.55),0 0 0 1px rgba(255,172,0,0.3),0 0 60px rgba(255,90,31,0.2);
+  flex-shrink:0;position:relative;overflow:hidden;
+  animation:logoPulse 4s ease-in-out infinite;
+}
+.logo-icon::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.25) 0%,transparent 50%);
+  border-radius:inherit;
+}
+@keyframes logoPulse{0%,100%{box-shadow:0 8px 32px rgba(255,90,31,0.55),0 0 0 1px rgba(255,172,0,0.3),0 0 60px rgba(255,90,31,0.2);}50%{box-shadow:0 8px 40px rgba(255,90,31,0.7),0 0 0 1px rgba(255,172,0,0.5),0 0 80px rgba(255,90,31,0.35);}}
+.logo-text{font-size:clamp(14px,4.6vw,20px);font-weight:900;letter-spacing:-0.4px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-family:'Syne',sans-serif;white-space:nowrap;overflow:visible;}
+.logo-sub{font-size:clamp(9px,2.3vw,10px);color:var(--muted);font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-top:2px;white-space:nowrap;overflow:visible;}
+.lang-btn{
+  background:var(--surface2);border:1px solid var(--border2);color:var(--muted2);
+  font-family:"Plus Jakarta Sans",sans-serif;font-size:13px;font-weight:800;
+  padding:9px 13px;border-radius:100px;cursor:pointer;transition:all 0.22s;
+  flex-shrink:0;white-space:nowrap;min-width:44px;text-align:center;
+  line-height:1.3;
+}
+.lang-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(255,90,31,0.06);}
+
+/* STATUS BAR */
+.status-bar{
+  background:linear-gradient(135deg,var(--surface),var(--surface2));
+  border:1px solid var(--border2);border-radius:20px;
+  padding:14px 20px;margin-bottom:18px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 2px 0 rgba(255,255,255,0.06) inset,0 12px 40px rgba(0,0,0,0.4),0 0 0 1px rgba(255,255,255,0.03);
+  backdrop-filter:blur(12px);
+  position:relative;overflow:visible;
+}
+.status-bar::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent);
+}
+.status-dot{
+  width:10px;height:10px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 16px var(--green),0 0 4px var(--green);
+  animation:heartbeat 2s ease-in-out infinite;flex-shrink:0;
+}
+@keyframes heartbeat{0%,100%{transform:scale(1);opacity:1}40%{transform:scale(1.5);opacity:0.7}60%{transform:scale(0.9);opacity:1}}
+.status-text{font-size:14px;font-weight:700;display:flex;align-items:center;gap:10px;}
+.queue-count{font-size:12px;color:var(--muted);}
+.busy-badge{background:rgba(255,210,0,0.12);color:var(--yellow);border:1px solid rgba(255,210,0,0.28);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:800;display:none;letter-spacing:0.5px;}
+
+/* STEPS */
+.steps{display:flex;gap:8px;margin-bottom:22px;align-items:center;}
+.step-dot{height:5px;border-radius:100px;flex:1;background:var(--surface3);transition:all 0.5s cubic-bezier(0.34,1.56,0.64,1);position:relative;overflow:hidden;}
+.step-dot::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent);transform:translateX(-100%);transition:transform 0.6s ease;}
+.step-dot.active{background:var(--grad);box-shadow:0 0 16px rgba(255,90,31,0.7),0 0 4px rgba(255,172,0,0.5);}
+.step-dot.active::after{transform:translateX(100%);}
+.step-dot.done{background:rgba(255,90,31,0.4);}
+
+/* CARDS */
+.card{
+  background:linear-gradient(160deg,var(--surface) 0%,var(--surface2) 60%,rgba(255,90,31,0.03) 100%);
+  border:1px solid var(--border);border-radius:28px;padding:28px;
+  margin-bottom:16px;display:none;
+  animation:slideUp 0.5s cubic-bezier(0.34,1.56,0.64,1);
+  box-shadow:0 16px 60px rgba(0,0,0,0.5),0 1px 0 rgba(255,255,255,0.07) inset,0 0 0 1px rgba(255,255,255,0.025);
+  position:relative;overflow:visible;
+  backdrop-filter:blur(20px);
+}
+/* Shimmer line uses a pseudo that clips itself only */
+.card::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:1px;border-radius:28px 28px 0 0;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.14) 40%,rgba(255,172,0,0.22) 60%,transparent 100%);
+  z-index:2;pointer-events:none;
+}
+.card.active{display:block;}
+@keyframes slideUp{from{opacity:0;transform:translateY(32px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+.card-icon{
+  width:76px;height:76px;
+  background:linear-gradient(145deg,rgba(255,90,31,0.2),rgba(255,172,0,0.10));
+  border:1.5px solid rgba(255,90,31,0.3);border-radius:24px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:36px;margin-bottom:20px;
+  box-shadow:0 8px 32px rgba(255,90,31,0.22),
+             0 0 0 5px rgba(255,90,31,0.06),
+             0 0 0 10px rgba(255,90,31,0.025);
+  position:relative;
+}
+.card-icon::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;
+  background:linear-gradient(145deg,rgba(255,255,255,0.14),transparent 55%);
+  pointer-events:none;
+}
+.card-title{font-size:25px;font-weight:900;margin-bottom:6px;letter-spacing:-0.8px;font-family:'Syne',sans-serif;background:linear-gradient(135deg,var(--text) 0%,rgba(240,236,255,0.7) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.card-sub{font-size:13px;color:var(--muted2);margin-bottom:22px;line-height:1.55;}
+
+/* INPUTS */
+.input-wrap{position:relative;margin-bottom:14px;}
+.input-label{font-size:11px;font-weight:700;color:var(--muted2);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:9px;display:block;}
+.phone-wrap{display:flex;gap:8px;}
+.country-code{background:var(--surface2);border:1px solid var(--border2);border-radius:14px;padding:16px;font-size:15px;font-weight:800;color:var(--muted2);white-space:nowrap;flex-shrink:0;}
+input[type=text],input[type=number],select{
+  width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:16px;
+  padding:17px 18px;font-size:15px;font-family:"Plus Jakarta Sans",sans-serif;color:var(--text);
+  outline:none;transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);-webkit-appearance:none;
+  box-shadow:0 2px 8px rgba(0,0,0,0.2),0 1px 0 rgba(255,255,255,0.04) inset;
+}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,90,31,0.15),0 0 28px rgba(255,90,31,0.09),0 4px 16px rgba(0,0,0,0.3);background:var(--surface3);}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2354517a' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 16px center;padding-right:40px;}
+select option{background:var(--surface2);}
+
+/* PAYMENT NOTICE */
+.payment-notice{border-radius:18px;overflow:hidden;margin-bottom:20px;border:1px solid rgba(255,172,0,0.22);}
+.payment-notice-header{background:linear-gradient(90deg,rgba(255,90,31,0.14),rgba(255,172,0,0.09));padding:12px 18px;border-bottom:1px solid rgba(255,172,0,0.15);display:flex;align-items:center;gap:10px;}
+.payment-hdr-icon{font-size:20px;}
+.payment-hdr-label{font-size:11px;font-weight:800;letter-spacing:1.3px;text-transform:uppercase;color:var(--accent2);}
+.payment-notice-body{background:rgba(255,90,31,0.04);padding:16px 18px;display:flex;flex-direction:column;gap:11px;}
+.pay-row{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.pay-row-left{display:flex;align-items:center;gap:12px;}
+.pay-icon{font-size:22px;width:36px;text-align:center;flex-shrink:0;}
+.pay-label{font-size:13px;color:var(--muted2);}
+.pay-divider{height:1px;background:rgba(255,255,255,0.05);}
+.badge{border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800;letter-spacing:0.5px;flex-shrink:0;}
+.badge-red{background:rgba(255,58,92,0.12);color:#ff7090;border:1px solid rgba(255,58,92,0.25);}
+.badge-green{background:rgba(0,240,144,0.1);color:var(--green);border:1px solid rgba(0,240,144,0.25);}
+.badge-yellow{background:rgba(255,210,0,0.1);color:var(--yellow);border:1px solid rgba(255,210,0,0.25);}
+
+/* NOTES */
+.info-note{
+  background:linear-gradient(135deg,rgba(77,140,255,0.08),rgba(168,85,247,0.05));
+  border:1px solid rgba(77,140,255,0.2);border-radius:15px;
+  padding:14px 18px;font-size:12.5px;color:#9bbfff;margin-bottom:18px;line-height:1.7;
+  box-shadow:0 4px 16px rgba(77,140,255,0.07),0 1px 0 rgba(255,255,255,0.04) inset;
+}
+.warn-note{
+  background:linear-gradient(135deg,rgba(255,210,0,0.08),rgba(255,90,31,0.05));
+  border:1px solid rgba(255,210,0,0.2);border-radius:15px;
+  padding:14px 18px;font-size:12.5px;color:#ffe066;margin-bottom:18px;line-height:1.7;
+  box-shadow:0 4px 16px rgba(255,210,0,0.07),0 1px 0 rgba(255,255,255,0.04) inset;
+}
+
+/* SERVICE GRID */
+.service-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+.service-card{
+  position:relative;overflow:hidden;
+  background:var(--surface2);border:2px solid var(--border);border-radius:22px;
+  padding:22px 14px 18px;cursor:pointer;
+  transition:all 0.28s cubic-bezier(0.34,1.4,0.64,1);text-align:center;
+}
+.service-card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--grad);opacity:0;transition:opacity 0.25s;}
+.service-card:hover{border-color:rgba(255,90,31,0.5);transform:translateY(-4px);box-shadow:0 14px 44px rgba(255,90,31,0.15);}
+.service-card:hover::before{opacity:1;}
+.service-card.selected{border-color:var(--accent);background:linear-gradient(145deg,rgba(255,90,31,0.12),rgba(255,172,0,0.06));box-shadow:0 0 0 1px rgba(255,172,0,0.15),0 14px 44px rgba(255,90,31,0.2);transform:translateY(-3px);}
+.service-card.selected::before{opacity:1;}
+.svc-icon-wrap{
+  width:76px;height:76px;border-radius:22px;
+  background:linear-gradient(145deg,rgba(255,90,31,0.12),rgba(255,172,0,0.06));
+  border:1.5px solid rgba(255,90,31,0.2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:36px;margin:0 auto 14px;transition:all 0.28s;
+}
+.service-card:hover .svc-icon-wrap,.service-card.selected .svc-icon-wrap{
+  background:linear-gradient(145deg,rgba(255,90,31,0.2),rgba(255,172,0,0.1));
+  border-color:rgba(255,90,31,0.38);box-shadow:0 6px 22px rgba(255,90,31,0.2);transform:scale(1.06);
+}
+.service-card[data-id=colour] .svc-icon-wrap{background:linear-gradient(145deg,rgba(77,140,255,0.12),rgba(168,85,247,0.08));border-color:rgba(77,140,255,0.22);}
+.service-card[data-id=colour]:hover .svc-icon-wrap,.service-card[data-id=colour].selected .svc-icon-wrap{background:linear-gradient(145deg,rgba(77,140,255,0.22),rgba(168,85,247,0.14));border-color:rgba(77,140,255,0.42);box-shadow:0 6px 22px rgba(77,140,255,0.2);}
+.service-card[data-id=colour].selected{border-color:var(--blue);background:linear-gradient(145deg,rgba(77,140,255,0.1),rgba(168,85,247,0.06));box-shadow:0 0 0 1px rgba(168,85,247,0.2),0 14px 44px rgba(77,140,255,0.18);}
+.service-card[data-id=colour].selected::before{background:var(--grad-cool);}
+.svc-name{font-size:15px;font-weight:900;margin-bottom:5px;letter-spacing:-0.2px;}
+.svc-price{font-size:12px;color:var(--muted);font-weight:500;}
+.service-card.selected .svc-price{color:var(--accent3);}
+.service-card[data-id=colour].selected .svc-price{color:#80a8ff;}
+.svc-hint{font-size:10.5px;color:var(--muted);margin-top:7px;font-weight:500;}
+.svc-check{position:absolute;top:10px;right:10px;width:24px;height:24px;border-radius:50%;background:var(--red);font-size:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;box-shadow:0 2px 10px rgba(255,58,92,0.45);}
+
+/* UNIT LEGEND */
+.unit-legend{background:rgba(255,255,255,0.025);border:1px solid var(--border);border-radius:16px;padding:14px 18px;margin-bottom:16px;display:flex;flex-direction:column;gap:10px;}
+.unit-legend-row{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--muted2);line-height:1.4;}
+.unit-legend-row .leg-icon{font-size:24px;flex-shrink:0;}
+.unit-legend-row strong{color:var(--text);}
+
+/* PAGES ROW */
+.pages-row{display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border2);border-radius:16px;padding:12px 14px;overflow:visible;}
+/* Override global input styles for the units stepper */
+.pages-row input[type=number]{box-shadow:none;transform:none !important;transition:border-color 0.2s,background 0.2s;}
+.pages-row input[type=number]:focus{box-shadow:none;transform:none !important;background:transparent;}
+.pages-btn{width:46px;height:46px;border-radius:13px;border:1px solid var(--border2);background:var(--surface3);color:var(--text);font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.18s;flex-shrink:0;line-height:1;font-weight:700;}
+.pages-btn:hover{background:var(--accent);border-color:var(--accent);box-shadow:0 4px 18px rgba(255,90,31,0.4);transform:scale(1.06);}
+.pages-btn:active{transform:scale(0.95);}
+.pages-label{font-size:11px;color:var(--muted);}
+
+/* COST SUMMARY */
+.cost-summary{
+  background:linear-gradient(135deg,rgba(255,90,31,0.07),rgba(255,172,0,0.04));
+  border:1px solid rgba(255,90,31,0.18);border-radius:20px;padding:20px;
+  margin-bottom:16px;display:none;
+  box-shadow:0 6px 28px rgba(255,90,31,0.08),0 1px 0 rgba(255,255,255,0.05) inset;
+  position:relative;overflow:hidden;
+}
+.cost-summary::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,172,0,0.3),transparent);}
+.cost-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.cost-row:last-child{margin-bottom:0;padding-top:12px;border-top:1px solid rgba(255,90,31,0.14);}
+.cost-label{font-size:13px;color:var(--muted2);}
+.cost-val{font-size:13px;font-weight:700;font-family:"JetBrains Mono",monospace;}
+.cost-total-label{font-size:15px;font-weight:800;}
+.cost-total-val{font-size:23px;font-weight:900;color:var(--accent);font-family:"JetBrains Mono",monospace;}
+
+/* BUSY WARNING */
+.busy-warning{background:rgba(255,210,0,0.07);border:1px solid rgba(255,210,0,0.22);border-radius:16px;padding:15px 18px;margin-bottom:16px;display:none;}
+.busy-warning-title{font-size:14px;font-weight:800;color:var(--yellow);margin-bottom:4px;}
+.busy-warning-sub{font-size:12px;color:var(--muted2);line-height:1.5;}
+
+/* BUTTONS */
+.btn-primary{
+  width:100%;background:var(--grad);border:none;border-radius:20px;padding:20px;
+  font-size:16px;font-weight:800;font-family:"Plus Jakarta Sans",sans-serif;color:white;
+  cursor:pointer;transition:all 0.28s cubic-bezier(0.34,1.56,0.64,1);
+  box-shadow:0 8px 32px rgba(255,90,31,0.45),0 1px 0 rgba(255,255,255,0.25) inset,0 -2px 0 rgba(0,0,0,0.2) inset;
+  letter-spacing:0.3px;position:relative;overflow:hidden;
+}
+.btn-primary::before{
+  content:"";position:absolute;top:0;left:-100%;width:100%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);
+  transition:left 0.5s ease;
+}
+.btn-primary:hover::before{left:100%;}
+.btn-primary:hover{transform:translateY(-3px);box-shadow:0 14px 44px rgba(255,90,31,0.6),0 1px 0 rgba(255,255,255,0.25) inset;}
+.btn-primary:disabled{opacity:0.32;cursor:not-allowed;transform:none;box-shadow:none;}
+.btn-primary:active{transform:translateY(1px);box-shadow:0 4px 16px rgba(255,90,31,0.4);}
+.btn-secondary{width:100%;background:transparent;border:1px solid var(--border2);border-radius:18px;padding:16px;font-size:14px;font-weight:700;font-family:"Plus Jakarta Sans",sans-serif;color:var(--muted2);cursor:pointer;transition:all 0.22s;margin-top:10px;}
+.btn-secondary:hover{border-color:var(--muted2);color:var(--text);background:rgba(255,255,255,0.03);}
+.btn-green{
+  width:100%;background:var(--grad-green);border:none;border-radius:20px;padding:20px;
+  font-size:15px;font-weight:800;font-family:"Plus Jakarta Sans",sans-serif;color:#003320;
+  cursor:pointer;transition:all 0.28s cubic-bezier(0.34,1.56,0.64,1);
+  box-shadow:0 8px 32px rgba(0,240,144,0.4),0 1px 0 rgba(255,255,255,0.3) inset;
+  margin-top:12px;position:relative;overflow:hidden;
+}
+.btn-green::before{content:"";position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent);transition:left 0.5s ease;}
+.btn-green:hover::before{left:100%;}
+.btn-green:hover{transform:translateY(-3px);box-shadow:0 14px 44px rgba(0,240,144,0.55);}
+.btn-notify{width:100%;background:linear-gradient(135deg,#7c3aed,#4f46e5);border:none;border-radius:18px;padding:19px;font-size:15px;font-weight:800;font-family:"Plus Jakarta Sans",sans-serif;color:white;cursor:pointer;transition:all 0.22s;box-shadow:0 6px 20px rgba(124,58,237,0.35);margin-top:10px;}
+.btn-notify:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(124,58,237,0.5);}
+.btn-notify.active{background:var(--grad-green);color:#003320;box-shadow:0 6px 20px rgba(0,240,144,0.35);}
+.btn-notify.denied{background:var(--surface3);color:var(--muted);box-shadow:none;cursor:not-allowed;}
+.btn-call{width:100%;background:linear-gradient(135deg,#4d8cff,#2563eb);border:none;border-radius:18px;padding:19px;font-size:15px;font-weight:800;font-family:"Plus Jakarta Sans",sans-serif;color:white;cursor:pointer;transition:all 0.22s;box-shadow:0 6px 20px rgba(77,140,255,0.35);margin-top:10px;}
+.btn-call:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(77,140,255,0.5);}
+.btn-wa-files{width:100%;background:linear-gradient(135deg,#25d366,#0fb555);border:none;border-radius:18px;padding:19px;font-size:15px;font-weight:800;font-family:"Plus Jakarta Sans",sans-serif;color:white;cursor:pointer;transition:all 0.22s;box-shadow:0 6px 20px rgba(37,211,102,0.3);margin-top:10px;}
+.btn-wa-files:hover{transform:translateY(-2px);}
+
+/* TOKEN DISPLAY */
+.token-display{text-align:center;padding:18px 0 26px;}
+.token-label{font-size:10px;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;}
+.token-num{
+  font-size:96px;font-weight:900;font-family:"JetBrains Mono",monospace;
+  background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  line-height:1;letter-spacing:-5px;
+  filter:drop-shadow(0 0 50px rgba(255,90,31,0.65)) drop-shadow(0 0 20px rgba(255,172,0,0.4));
+  animation:tokenGlow 3s ease-in-out infinite;
+}
+@keyframes tokenGlow{
+  0%,100%{filter:drop-shadow(0 0 50px rgba(255,90,31,0.65)) drop-shadow(0 0 20px rgba(255,172,0,0.4));}
+  50%{filter:drop-shadow(0 0 70px rgba(255,90,31,0.85)) drop-shadow(0 0 35px rgba(255,172,0,0.6));}
+}
+.token-sub{font-size:13px;color:var(--muted2);margin-top:12px;font-weight:500;}
+
+/* QUEUE */
+.queue-status{
+  background:linear-gradient(135deg,var(--surface2),var(--surface3));
+  border:1px solid var(--border2);border-radius:18px;padding:16px 20px;margin:16px 0;
+  box-shadow:0 4px 20px rgba(0,0,0,0.25),0 1px 0 rgba(255,255,255,0.05) inset;
+  position:relative;
+}
+.queue-row{display:flex;align-items:center;justify-content:space-between;}
+.queue-ahead{font-size:13px;color:var(--muted2);}
+.queue-ahead span{color:var(--text);font-weight:800;}
+.wait-time{font-size:13px;color:var(--muted2);}
+.wait-time span{color:var(--accent);font-weight:800;}
+.queue-live{display:flex;align-items:center;gap:8px;}
+.queue-live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:heartbeat 1.5s infinite;flex-shrink:0;}
+
+.youre-next{
+  background:linear-gradient(135deg,rgba(0,240,144,0.15),rgba(0,192,112,0.08));
+  border:1px solid rgba(0,240,144,0.35);border-radius:20px;padding:18px 20px;
+  margin-bottom:14px;display:none;text-align:center;
+  box-shadow:0 0 40px rgba(0,240,144,0.15),0 4px 20px rgba(0,240,144,0.1);
+  animation:nextPulse 2s ease-in-out infinite;
+}
+@keyframes nextPulse{0%,100%{box-shadow:0 0 40px rgba(0,240,144,0.15),0 4px 20px rgba(0,240,144,0.1);}50%{box-shadow:0 0 60px rgba(0,240,144,0.25),0 4px 30px rgba(0,240,144,0.18);}}
+.youre-next-title{font-size:17px;font-weight:900;color:var(--green);margin-bottom:4px;}
+.youre-next-sub{font-size:12px;color:var(--muted2);}
+
+.ready-time-badge{background:rgba(77,140,255,0.08);border:1px solid rgba(77,140,255,0.2);border-radius:13px;padding:11px 16px;display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.ready-time-icon{font-size:20px;}
+.ready-time-text{font-size:13px;color:#8ab4ff;font-weight:600;}
+
+.expiry-timer{
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  background:linear-gradient(135deg,rgba(255,58,92,0.09),rgba(255,58,92,0.04));
+  border:1px solid rgba(255,58,92,0.22);border-radius:16px;padding:14px 20px;margin-bottom:16px;
+  box-shadow:0 4px 20px rgba(255,58,92,0.1),0 1px 0 rgba(255,255,255,0.04) inset;
+}
+.timer-icon{font-size:20px;}
+.timer-text{font-size:13px;color:var(--red);font-weight:700;}
+.timer-count{font-family:"JetBrains Mono",monospace;font-weight:800;font-size:17px;color:var(--red);}
+
+/* RECEIPT */
+#receiptCapture{padding:0;border:none;background:transparent;margin-bottom:0;}
+.receipt-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px;padding:0 2px;}
+.receipt-key{font-size:12px;color:var(--muted);}
+.receipt-val{font-size:13px;font-weight:700;font-family:"JetBrains Mono",monospace;text-align:right;max-width:65%;word-break:break-word;}
+
+/* PACKS */
+.pack-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;align-items:stretch;}
+.pack-card{
+  position:relative;background:var(--surface2);border:2px solid var(--border);border-radius:22px;
+  padding:20px 14px 18px;cursor:pointer;transition:all 0.3s cubic-bezier(0.34,1.4,0.64,1);
+  text-align:center;overflow:hidden;
+  box-shadow:0 4px 16px rgba(0,0,0,0.25),0 1px 0 rgba(255,255,255,0.04) inset;
+}
+.pack-card::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent);opacity:0;transition:opacity 0.3s;}
+.pack-card:hover{border-color:rgba(255,90,31,0.55);transform:translateY(-4px);box-shadow:0 14px 40px rgba(255,90,31,0.18),0 0 0 1px rgba(255,90,31,0.1);}
+.pack-card:hover::before{opacity:1;}
+.pack-card.selected{border-color:var(--accent);background:linear-gradient(145deg,rgba(255,90,31,0.15),rgba(255,172,0,0.07));box-shadow:0 0 0 1px rgba(255,172,0,0.2),0 16px 48px rgba(255,90,31,0.25),0 0 60px rgba(255,90,31,0.12);}
+.pack-card.selected::before{opacity:1;}
+.pack-badge{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--grad);border-radius:100px;padding:3px 12px;font-size:10px;font-weight:900;color:white;white-space:nowrap;box-shadow:0 4px 12px rgba(255,90,31,0.4);}
+.pack-units{font-size:30px;font-weight:900;font-family:"JetBrains Mono",monospace;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.1;}
+.pack-label{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+.pack-price{font-size:18px;font-weight:900;color:var(--text);margin-top:4px;}
+.pack-per{font-size:11px;color:var(--muted2);margin-top:3px;}
+.pack-bonus{font-size:11px;color:var(--green);font-weight:700;margin-top:5px;}
+
+/* CHECK STATUS */
+.check-status-result{background:var(--surface2);border:1px solid var(--border2);border-radius:18px;padding:22px;margin-top:14px;display:none;}
+.status-token-num{font-size:56px;font-weight:900;font-family:"JetBrains Mono",monospace;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+
+/* SHOP CLOSED */
+.shop-closed{text-align:center;padding:48px 20px;}
+.closed-icon{font-size:72px;margin-bottom:20px;}
+.closed-title{font-size:26px;font-weight:900;margin-bottom:10px;}
+.closed-sub{font-size:14px;color:var(--muted2);line-height:1.6;}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:100;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px);}
+.modal-overlay.open{display:flex;}
+.modal-sheet{
+  background:linear-gradient(160deg,var(--surface) 0%,var(--surface2) 100%);
+  border-radius:32px 32px 0 0;padding:28px 24px 44px;width:100%;max-width:430px;
+  animation:slideUp 0.42s cubic-bezier(0.34,1.56,0.64,1);
+  border-top:1px solid rgba(255,255,255,0.1);
+  box-shadow:0 -16px 60px rgba(0,0,0,0.6),0 -1px 0 rgba(255,255,255,0.06);
+  backdrop-filter:blur(20px);
+}
+.modal-handle{width:44px;height:4px;border-radius:2px;background:var(--surface3);margin:0 auto 24px;}
+.modal-title{font-size:20px;font-weight:900;margin-bottom:18px;}
+.share-option{display:flex;align-items:center;gap:16px;padding:16px 18px;background:var(--surface2);border:1px solid var(--border);border-radius:18px;cursor:pointer;margin-bottom:10px;transition:all 0.22s;}
+.share-option:hover{border-color:var(--accent);transform:translateX(4px);}
+.share-option-icon{font-size:28px;width:54px;height:54px;border-radius:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.share-option-text{font-size:14px;font-weight:800;}
+.share-option-sub{font-size:12px;color:var(--muted2);margin-top:2px;}
+
+
+/* PRICE MENU MODAL */
+.menu-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:200;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(10px);}
+.menu-modal-overlay.open{display:flex;}
+.menu-sheet{
+  background:linear-gradient(160deg,#0d0d22 0%,#111128 100%);
+  border-radius:28px 28px 0 0;width:100%;max-width:430px;
+  border-top:1px solid rgba(255,255,255,0.1);
+  box-shadow:0 -20px 60px rgba(0,0,0,0.7);
+  max-height:88vh;display:flex;flex-direction:column;
+  animation:slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+.menu-sheet-handle{width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,0.15);margin:14px auto 0;flex-shrink:0;}
+.menu-sheet-header{padding:16px 22px 14px;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;}
+.menu-sheet-title{font-size:18px;font-weight:900;font-family:'Syne',sans-serif;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.menu-sheet-sub{font-size:11px;color:var(--muted2);margin-top:3px;letter-spacing:0.3px;}
+.menu-sheet-body{overflow-y:auto;padding:14px 16px 36px;-webkit-overflow-scrolling:touch;}
+
+/* Rate pill */
+.menu-rate-pill{
+  display:inline-flex;align-items:center;gap:7px;
+  background:linear-gradient(135deg,rgba(255,90,31,0.15),rgba(255,172,0,0.08));
+  border:1px solid rgba(255,172,0,0.25);border-radius:100px;
+  padding:6px 14px;font-size:12px;font-weight:800;color:var(--accent2);
+  margin-bottom:14px;
+}
+
+/* Category label */
+.menu-cat{
+  font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--muted);margin:14px 0 8px;padding-left:2px;
+  display:flex;align-items:center;gap:8px;
+}
+.menu-cat::after{content:"";flex:1;height:1px;background:rgba(255,255,255,0.06);}
+
+/* Menu item row */
+.menu-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:11px 14px;border-radius:14px;margin-bottom:6px;
+  background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.055);
+  transition:background 0.18s;gap:10px;
+}
+.menu-item:active{background:rgba(255,90,31,0.08);}
+.menu-item-left{display:flex;align-items:center;gap:10px;min-width:0;}
+.menu-item-icon{font-size:20px;flex-shrink:0;width:28px;text-align:center;}
+.menu-item-name{font-size:13.5px;font-weight:700;color:var(--text);line-height:1.3;}
+.menu-item-size{font-size:11px;color:var(--muted2);margin-top:1px;}
+.menu-item-right{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:4px;}
+.menu-unit-badge{
+  background:linear-gradient(135deg,rgba(255,90,31,0.18),rgba(255,172,0,0.1));
+  border:1px solid rgba(255,172,0,0.2);border-radius:8px;
+  padding:4px 10px;font-size:12px;font-weight:900;
+  color:var(--accent2);font-family:'JetBrains Mono',monospace;white-space:nowrap;
+}
+.menu-unit-price{font-size:13px;font-weight:800;color:var(--text);font-family:"JetBrains Mono",monospace;}
+
+/* Colour variant badge */
+.menu-unit-badge.colour{
+  background:linear-gradient(135deg,rgba(77,140,255,0.18),rgba(168,85,247,0.1));
+  border-color:rgba(77,140,255,0.25);color:#80b8ff;
+}
+.menu-unit-badge.lami{
+  background:linear-gradient(135deg,rgba(0,240,144,0.14),rgba(0,200,100,0.07));
+  border-color:rgba(0,240,144,0.22);color:var(--green);
+}
+.menu-unit-badge.bind{
+  background:linear-gradient(135deg,rgba(168,85,247,0.15),rgba(124,58,237,0.08));
+  border-color:rgba(168,85,247,0.25);color:#c084fc;
+}
+
+/* Menu open button */
+.btn-menu{
+  width:100%;background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.1);border-radius:16px;
+  padding:14px 18px;font-size:13px;font-weight:800;
+  font-family:"Plus Jakarta Sans",sans-serif;color:var(--muted2);
+  cursor:pointer;transition:all 0.22s;margin-top:10px;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+}
+.btn-menu:hover{border-color:rgba(255,172,0,0.4);color:var(--accent2);background:rgba(255,172,0,0.05);}
+
+@media print{body > *:not(#printArea){display:none !important;}#printArea{display:block !important;background:white !important;color:black !important;padding:20px !important;}}
+
+/* ── UPI QR CARD ── */
+.upi-qr-card{
+  border-radius:22px;overflow:hidden;
+  margin-bottom:16px;
+  border:1px solid rgba(255,172,0,0.22);
+  background:linear-gradient(160deg,rgba(255,90,31,0.07) 0%,rgba(255,172,0,0.04) 100%);
+  box-shadow:0 8px 32px rgba(255,90,31,0.1),0 1px 0 rgba(255,255,255,0.06) inset;
+}
+.upi-qr-header{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 18px;
+  background:linear-gradient(90deg,rgba(255,90,31,0.14),rgba(255,172,0,0.09));
+  border-bottom:1px solid rgba(255,172,0,0.14);
+}
+.upi-qr-header-icon{font-size:20px;}
+.upi-qr-header-text{
+  font-size:11px;font-weight:800;letter-spacing:1.2px;
+  text-transform:uppercase;color:var(--accent2);flex:1;
+}
+.upi-amount-badge{
+  background:rgba(255,90,31,0.18);border:1px solid rgba(255,172,0,0.35);
+  border-radius:100px;padding:4px 12px;
+  font-size:15px;font-weight:900;color:var(--accent2);
+  font-family:'JetBrains Mono',monospace;
+}
+.upi-qr-body{
+  padding:20px 18px 18px;display:flex;flex-direction:column;align-items:center;gap:14px;
+}
+.upi-qr-box{
+  background:#fff;border-radius:16px;padding:14px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.4),0 0 0 2px rgba(255,172,0,0.25);
+  display:flex;align-items:center;justify-content:center;
+  position:relative;
+}
+.upi-qr-box canvas,.upi-qr-box img{border-radius:6px;display:block;}
+.upi-qr-logo-over{
+  position:absolute;
+  width:28px;height:28px;border-radius:7px;
+  background:white;display:flex;align-items:center;justify-content:center;
+  font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,0.15);
+  pointer-events:none;
+}
+.upi-vpa{
+  font-size:13px;font-weight:700;color:var(--muted2);
+  font-family:'JetBrains Mono',monospace;letter-spacing:0.3px;
+  display:flex;align-items:center;gap:7px;
+}
+.upi-vpa span{color:var(--accent2);}
+.upi-instruction{
+  font-size:12px;color:var(--muted2);text-align:center;line-height:1.6;
+  background:rgba(255,255,255,0.03);border:1px solid var(--border);
+  border-radius:12px;padding:10px 14px;width:100%;
+}
+.upi-instruction strong{color:var(--text);}
+.upi-open-btn{
+  width:100%;padding:13px;border-radius:14px;
+  background:linear-gradient(135deg,rgba(255,90,31,0.15),rgba(255,172,0,0.1));
+  border:1px solid rgba(255,172,0,0.3);
+  color:var(--accent2);font-size:13px;font-weight:800;
+  font-family:"Plus Jakarta Sans",sans-serif;cursor:pointer;
+  transition:all 0.22s;display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.upi-open-btn:hover{background:linear-gradient(135deg,rgba(255,90,31,0.25),rgba(255,172,0,0.18));border-color:var(--accent2);transform:translateY(-1px);}
+
+/* ── ADMIN BUTTON ── */
+.btn-admin{
+  width:38px;height:38px;border-radius:12px;
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);
+  color:var(--muted);font-size:18px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.22s;flex-shrink:0;
+}
+.btn-admin:hover{border-color:rgba(255,172,0,0.4);color:var(--accent2);background:rgba(255,172,0,0.06);}
+
+/* ── ADMIN OVERLAY ── */
+.admin-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:300;
+  display:none;flex-direction:column;align-items:stretch;
+  backdrop-filter:blur(14px);overflow:hidden;
+}
+.admin-overlay.open{display:flex;}
+.admin-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 20px 14px;border-bottom:1px solid rgba(255,255,255,0.08);
+  flex-shrink:0;
+}
+.admin-header-title{
+  font-size:18px;font-weight:900;font-family:'Syne',sans-serif;
+  background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.admin-close{
+  width:36px;height:36px;border-radius:10px;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);
+  color:var(--muted2);font-size:18px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.2s;
+}
+.admin-close:hover{background:rgba(255,58,92,0.15);border-color:rgba(255,58,92,0.35);color:var(--red);}
+
+/* PIN screen */
+.admin-pin-wrap{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:30px 28px;gap:22px;
+}
+.admin-pin-icon{font-size:52px;margin-bottom:4px;}
+.admin-pin-title{font-size:19px;font-weight:900;font-family:'Syne',sans-serif;}
+.admin-pin-sub{font-size:13px;color:var(--muted2);margin-top:-14px;}
+.admin-pin-dots{display:flex;gap:14px;margin:4px 0;}
+.pin-dot{
+  width:16px;height:16px;border-radius:50%;
+  background:var(--surface3);border:2px solid var(--border2);
+  transition:all 0.2s;
+}
+.pin-dot.filled{background:var(--accent);border-color:var(--accent);box-shadow:0 0 12px rgba(255,90,31,0.5);}
+.admin-pin-error{color:var(--red);font-size:13px;font-weight:700;min-height:18px;text-align:center;}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%;max-width:260px;}
+.pin-key{
+  padding:18px 10px;border-radius:16px;
+  background:var(--surface2);border:1px solid var(--border2);
+  font-size:20px;font-weight:800;font-family:'JetBrains Mono',monospace;
+  color:var(--text);cursor:pointer;text-align:center;
+  transition:all 0.18s cubic-bezier(0.34,1.4,0.64,1);
+}
+.pin-key:active,.pin-key:hover{background:rgba(255,90,31,0.14);border-color:var(--accent);transform:scale(0.96);}
+.pin-key.del{color:var(--red);font-size:16px;}
+.pin-key.enter{background:var(--grad);color:white;border-color:transparent;font-size:14px;font-weight:900;}
+.pin-key.enter:hover{transform:scale(0.97);box-shadow:0 6px 20px rgba(255,90,31,0.35);}
+.pin-key.zero{grid-column:2;}
+
+/* Admin body */
+.admin-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 16px 30px;}
+.admin-stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
+.admin-stat{
+  background:var(--surface2);border:1px solid var(--border);border-radius:16px;
+  padding:14px 12px;text-align:center;
+}
+.admin-stat-val{font-size:24px;font-weight:900;font-family:'JetBrains Mono',monospace;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.admin-stat-label{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:0.8px;text-transform:uppercase;margin-top:3px;}
+.admin-section-label{
+  font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--muted);margin:14px 0 8px;padding-left:2px;
+  display:flex;align-items:center;gap:8px;
+}
+.admin-section-label::after{content:"";flex:1;height:1px;background:rgba(255,255,255,0.06);}
+
+/* Token entry card */
+.admin-token-card{
+  background:var(--surface2);border:1px solid var(--border);border-radius:18px;
+  padding:14px 16px;margin-bottom:10px;
+  transition:border-color 0.2s;
+}
+.admin-token-card.confirmed-tok{border-color:rgba(0,240,144,0.28);}
+.admin-token-card.confirmed-pay{border-color:rgba(77,140,255,0.28);}
+.admin-token-card.confirmed-both{border-color:rgba(168,85,247,0.35);}
+
+.admin-tok-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.admin-tok-num{font-size:22px;font-weight:900;font-family:'JetBrains Mono',monospace;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.admin-tok-time{font-size:11px;color:var(--muted);font-weight:500;}
+.admin-tok-meta{font-size:12px;color:var(--muted2);margin-bottom:12px;line-height:1.6;}
+.admin-tok-actions{display:flex;gap:8px;}
+.admin-action-btn{
+  flex:1;padding:10px 6px;border-radius:12px;border:1.5px solid;
+  font-size:12px;font-weight:800;cursor:pointer;
+  font-family:"Plus Jakarta Sans",sans-serif;
+  transition:all 0.2s;text-align:center;line-height:1.3;
+}
+.admin-action-btn.tok-confirm{
+  background:rgba(0,240,144,0.08);border-color:rgba(0,240,144,0.25);color:var(--green);
+}
+.admin-action-btn.tok-confirm.done{
+  background:rgba(0,240,144,0.18);border-color:rgba(0,240,144,0.5);
+  box-shadow:0 0 12px rgba(0,240,144,0.15);
+}
+.admin-action-btn.pay-confirm{
+  background:rgba(77,140,255,0.08);border-color:rgba(77,140,255,0.25);color:var(--blue);
+}
+.admin-action-btn.pay-confirm.done{
+  background:rgba(77,140,255,0.18);border-color:rgba(77,140,255,0.5);
+  box-shadow:0 0 12px rgba(77,140,255,0.15);
+}
+.admin-action-btn:active{transform:scale(0.96);}
+.admin-empty{text-align:center;padding:32px 20px;color:var(--muted);font-size:14px;}
+.admin-logout-btn{
+  width:100%;margin-top:18px;padding:14px;border-radius:16px;
+  background:rgba(255,58,92,0.08);border:1px solid rgba(255,58,92,0.2);
+  color:var(--red);font-size:14px;font-weight:800;
+  font-family:"Plus Jakarta Sans",sans-serif;cursor:pointer;transition:all 0.2s;
+}
+.admin-logout-btn:hover{background:rgba(255,58,92,0.15);border-color:rgba(255,58,92,0.4);}
+.admin-refresh-btn{
+  width:100%;margin-top:10px;padding:12px;border-radius:14px;
+  background:rgba(255,255,255,0.04);border:1px solid var(--border2);
+  color:var(--muted2);font-size:13px;font-weight:700;
+  font-family:"Plus Jakarta Sans",sans-serif;cursor:pointer;transition:all 0.2s;
+}
+.admin-refresh-btn:hover{border-color:var(--accent);color:var(--accent);}
+</style>
+</head>
+<body>
+<canvas id="bgCanvas" style="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:0.6;"></canvas>
+<div class="glow-orb o1"></div>
+<div class="glow-orb o2"></div>
+<div class="glow-orb o3"></div>
+<div class="glow-orb o4"></div>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">🖨️</div>
+      <div>
+        <div class="logo-text" id="logoText">NativeSaver</div>
+        <div class="logo-sub" id="logoSub">Print & Xerox Shop</div>
+      </div>
+    </div>
+    <button class="lang-btn" id="langBtn" onclick="toggleLang()">తె</button>
+    <button class="btn-admin" onclick="openAdmin()" title="Admin Panel">⚙️</button>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar" id="statusBar">
+    <div class="status-text">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Shop Open</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="busy-badge" id="busyBadge">🔥 BUSY</div>
+      <div class="queue-count" id="queueCount">0 in queue</div>
+    </div>
+  </div>
+
+  <!-- STEP DOTS -->
+  <div class="steps" id="stepDots">
+    <div class="step-dot active" id="dot1"></div>
+    <div class="step-dot" id="dot2"></div>
+    <div class="step-dot" id="dot3"></div>
+  </div>
+
+  <!-- CARD 1: PHONE -->
+  <div class="card active" id="card1">
+    <div class="card-icon">👤</div>
+    <div class="card-title" id="c1title">Book Your Token</div>
+    <div class="card-sub" id="c1sub">Enter your mobile number to get started</div>
+
+    <div class="info-note" id="c1note">📋 Token is compulsory. Walk-ins are not accepted at the counter.</div>
+
+    <div style="border-radius:14px;overflow:hidden;margin-bottom:16px;border:1px solid rgba(255,149,0,0.25);">
+      <div style="background:linear-gradient(135deg,rgba(255,107,43,0.15),rgba(255,149,0,0.1));padding:10px 14px;border-bottom:1px solid rgba(255,149,0,0.2);display:flex;align-items:center;gap:8px;">
+        <span style="font-size:14px;">💳</span>
+        <span style="font-size:12px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;color:var(--accent2);">Payment Notice</span>
+      </div>
+      <div style="background:rgba(255,107,43,0.05);padding:12px 14px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:16px;">📵</span>
+            <span style="font-size:12px;color:var(--muted2);">Change at counter</span>
+          </div>
+          <span style="background:rgba(255,68,68,0.15);color:#ff6b6b;border:1px solid rgba(255,68,68,0.3);border-radius:6px;padding:2px 10px;font-size:11px;font-weight:800;letter-spacing:0.5px;">NOT AVAILABLE</span>
+        </div>
+        <div style="height:1px;background:rgba(255,255,255,0.05);"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:16px;">📱</span>
+            <span style="font-size:12px;color:var(--muted2);">UPI Payment</span>
+          </div>
+          <span style="background:rgba(0,208,132,0.15);color:var(--green);border:1px solid rgba(0,208,132,0.3);border-radius:6px;padding:2px 10px;font-size:11px;font-weight:800;letter-spacing:0.5px;">PREFERRED ✓</span>
+        </div>
+        <div style="height:1px;background:rgba(255,255,255,0.05);"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:16px;">💵</span>
+            <span style="font-size:12px;color:var(--muted2);">Cash — exact amount only</span>
+          </div>
+          <span style="background:rgba(255,214,10,0.12);color:var(--yellow);border:1px solid rgba(255,214,10,0.3);border-radius:6px;padding:2px 10px;font-size:11px;font-weight:800;letter-spacing:0.5px;">ACCEPTED</span>
+        </div>
+      </div>
+    </div>
+
+    <label class="input-label" id="c1label">Mobile Number</label>
+    <div class="phone-wrap">
+      <div class="country-code">🇮🇳 +91</div>
+      <input type="number" id="phoneInput" placeholder="98765 43210" maxlength="10" oninput="validatePhone()">
+    </div>
+
+    <div style="margin-top:16px;">
+      <button class="btn-primary" id="c1btn" onclick="goToStep2()" disabled>Continue →</button>
+      <button class="btn-secondary" id="checkStatusBtn" onclick="showCheckStatus()">🔍 Check My Token Status</button>
+      <button class="btn-secondary" id="historyBtn" onclick="showHistory()">📋 My Booking History</button>
+      <button class="btn-menu" onclick="openMenuModal()">📋 View Price Chart &amp; Units Guide</button>
+    </div>
+
+    <!-- Check Status Section -->
+    <div id="checkStatusSection" style="display:none;margin-top:16px;">
+      <label class="input-label">Enter your phone to check status</label>
+      <div class="phone-wrap" style="margin-bottom:10px;">
+        <div class="country-code">🇮🇳 +91</div>
+        <input type="number" id="checkPhone" placeholder="98765 43210">
+      </div>
+      <button class="btn-primary" onclick="checkTokenStatus()" style="margin-top:0;">Check Status</button>
+      <div class="check-status-result" id="checkResult"></div>
+    </div>
+
+    <!-- History Section -->
+    <div id="historySection" style="display:none;margin-top:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--muted2);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px;">📋 Booking History</div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+  <!-- CARD 2: UNITS -->
+  <div class="card" id="card2">
+    <div class="card-icon">🎟️</div>
+    <div class="card-title" id="c2title">Buy Units</div>
+    <div class="card-sub" id="c2sub">Choose a pack or enter units manually</div>
+
+    <!-- BUSY WARNING -->
+    <div class="busy-warning" id="busyWarning">
+      <div class="busy-warning-title">🔥 Shop is Busy Right Now</div>
+      <div class="busy-warning-sub" id="busyWarnSub">5+ people in queue. Expected wait time: ~25 mins. You can still book your token.</div>
+    </div>
+
+    <!-- UNIT LEGEND -->
+    <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted2);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Unit Rate</div>
+      <div style="font-size:13px;color:var(--muted2);line-height:1.7;">
+        🪙 <strong style="color:var(--text);">1 unit = ₹2.50</strong><br>
+        📄 B&amp;W page = 1 unit &nbsp;·&nbsp; 🎨 Colour page = 4 units
+      </div>
+    </div>
+
+    <!-- PACKS -->
+    <label class="input-label">Quick Packs</label>
+    <div class="pack-grid" id="packGrid">
+      <div class="pack-card" id="pack4" onclick="selectPack(4,10)">
+        <div class="pack-label">Starter</div>
+        <div class="pack-units">4</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;">units</div>
+        <div class="pack-price">₹10</div>
+        <div class="pack-per">₹2.50 / unit</div>
+      </div>
+      <div class="pack-card" id="pack10" onclick="selectPack(10,25)">
+        <div class="pack-badge">🔥 Best Value</div>
+        <div class="pack-label">Value</div>
+        <div class="pack-units">10</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;">units</div>
+        <div class="pack-price">₹25</div>
+        <div class="pack-per">₹2.50 / unit</div>
+      </div>
+    </div>
+
+    <!-- BONUS NOTICE -->
+    <div style="background:rgba(0,240,144,0.07);border:1px solid rgba(0,240,144,0.22);border-radius:13px;padding:12px 15px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
+      <span style="font-size:22px;flex-shrink:0;">🎁</span>
+      <div style="font-size:12.5px;color:var(--green);line-height:1.55;font-weight:600;">Every <strong>25 units</strong> you buy = <strong>2 bonus units FREE!</strong><br><span style="color:var(--muted2);font-weight:400;">Bonus units added automatically.</span></div>
+    </div>
+
+    <!-- MANUAL UNITS -->
+    <label class="input-label">Or Enter Units Manually</label>
+    <div class="pages-row" style="margin-bottom:6px;">
+      <button class="pages-btn" onclick="changeUnits(-1)">−</button>
+      <div style="flex:1;text-align:center;">
+        <input type="number" id="unitsInput"
+          style="width:90px;background:transparent;border:none;border-bottom:2px solid var(--accent);border-radius:0;padding:4px 0;font-size:30px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--text);text-align:center;outline:none;-webkit-appearance:none;appearance:none;"
+          value="4" min="4"
+          oninput="manualUnits(this.value)"
+          onfocus="this.select()"
+          onblur="enforceMinUnits(this)">
+        <div class="pages-label">units (min 4)</div>
+      </div>
+      <button class="pages-btn" onclick="changeUnits(1)">+</button>
+    </div>
+
+    <!-- COST SUMMARY -->
+    <div class="cost-summary" id="costSummary" style="display:block;margin-top:14px;">
+      <div class="cost-row">
+        <span class="cost-label">Units bought</span>
+        <span class="cost-val" id="csUnitsVal">4 units</span>
+      </div>
+      <div class="cost-row" id="bonusRow" style="display:none;">
+        <span class="cost-label">🎁 Bonus units</span>
+        <span class="cost-val" style="color:var(--green);" id="csBonusVal">+0</span>
+      </div>
+      <div class="cost-row">
+        <span class="cost-total-label" id="csTotal">Total to Pay</span>
+        <span class="cost-total-val" id="csTotalVal">₹10.00</span>
+      </div>
+    </div>
+
+    <div class="info-note" id="c2note" style="margin-top:14px;">💡 UPI preferred — carry exact cash, no change given at counter.</div>
+
+    <button class="btn-primary" id="c2btn" onclick="bookToken()" style="margin-top:6px;">Get My Token 🎫</button>
+    <button class="btn-secondary" id="c2back" onclick="goStep(1)">← Back</button>
+  </div>
+
+  <!-- CARD 3: TOKEN SUCCESS -->
+  <div class="card" id="card3">
+    <div id="receiptCapture" style="padding:0;">
+      <div style="text-align:center;padding:10px 0 6px;">
+        <div style="font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;" id="c3label">Your Token Number</div>
+        <div class="token-num" id="tokenNum">T-001</div>
+        <div class="token-sub" id="c3sub">Show this at the counter</div>
+      </div>
+
+      <div class="queue-status">
+        <div class="queue-row">
+          <div class="queue-live"><div class="queue-live-dot"></div><div class="queue-ahead" id="queueAhead">People ahead: <span id="aheadNum">0</span></div></div>
+          <div class="wait-time" id="waitTimeLabel">Wait: <span id="waitTimeVal">~5 min</span></div>
+        </div>
+      </div>
+
+      <!-- YOU'RE NEXT banner -->
+      <div class="youre-next" id="youreNextBanner">
+        <div class="youre-next-title">🎉 You're Next!</div>
+        <div class="youre-next-sub">Please head to the counter now</div>
+      </div>
+
+      <!-- ESTIMATED READY TIME -->
+      <div class="ready-time-badge" id="readyTimeBadge">
+        <span class="ready-time-icon">🕐</span>
+        <span class="ready-time-text" id="readyTimeText">Ready by ~—</span>
+      </div>
+
+      <div class="expiry-timer" id="expiryTimer">
+        <span class="timer-icon">⏱</span>
+        <span class="timer-text" id="timerLabel">Token expires in:</span>
+        <span class="timer-count" id="timerCount">2:00:00</span>
+      </div>
+
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;">
+        <div class="receipt-row">
+          <span class="receipt-key" id="r1">Phone</span>
+          <span class="receipt-val" id="rPhone">—</span>
+        </div>
+        <div class="receipt-row">
+          <span class="receipt-key" id="r2">Units</span>
+          <span class="receipt-val" id="rService">—</span>
+        </div>
+        <div class="receipt-row">
+          <span class="receipt-key" id="r4">Amount</span>
+          <span class="receipt-val" id="rAmount">—</span>
+        </div>
+        <div class="receipt-row">
+          <span class="receipt-key" id="r5">Booked At</span>
+          <span class="receipt-val" id="rTime">—</span>
+        </div>
+
+      </div>
+
+      <div class="warn-note" id="c3warn">⚠️ UPI preferred — carry exact cash, no change given. Token valid 2 hrs.</div>
+
+      <!-- UPI QR PAYMENT -->
+      <div class="upi-qr-card" id="upiQrCard">
+        <div class="upi-qr-header">
+          <span class="upi-qr-header-icon">📱</span>
+          <span class="upi-qr-header-text">Pay via UPI</span>
+          <span class="upi-amount-badge" id="upiAmtBadge">₹0</span>
+        </div>
+        <div class="upi-qr-body">
+          <div class="upi-qr-box">
+            <div id="upiQrCanvas"></div>
+            <div class="upi-qr-logo-over">🖨️</div>
+          </div>
+          <div class="upi-vpa">📲 UPI ID: <span>9030940640@okbizaxis</span></div>
+          <div class="upi-instruction">
+            Open any UPI app &amp; scan — the amount <strong id="upiAmtInline">₹0</strong> is auto-filled.<br>
+            Pay before arriving at the counter.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-green" onclick="openShareModal()" id="saveBtn">📤 Share / Save Token</button>
+    <button class="btn-notify" id="notifyBtn" onclick="enableNotification()">🔔 Notify Me Before Expiry</button>
+    <button class="btn-wa-files" onclick="sendFilesWhatsApp()" id="shareBtn">📎 Send Print Files on WhatsApp</button>
+    <button class="btn-call" onclick="callShop()" id="callBtn">📞 Call Shop</button>
+    <button class="btn-secondary" onclick="bookAnother()" id="c3more">🔄 Book Another Token</button>
+  </div>
+
+</div>
+
+
+<!-- ADMIN PANEL -->
+<div class="admin-overlay" id="adminOverlay">
+
+  <!-- PIN SCREEN -->
+  <div id="adminPinScreen" style="display:flex;flex-direction:column;height:100%;">
+    <div class="admin-header">
+      <div class="admin-header-title">⚙️ Admin Panel</div>
+      <button class="admin-close" onclick="closeAdmin()">✕</button>
+    </div>
+    <div class="admin-pin-wrap">
+      <div class="admin-pin-icon">🔐</div>
+      <div class="admin-pin-title">Enter Admin PIN</div>
+      <div class="admin-pin-sub">4-digit access code required</div>
+      <div class="admin-pin-dots" id="pinDots">
+        <div class="pin-dot" id="pd0"></div>
+        <div class="pin-dot" id="pd1"></div>
+        <div class="pin-dot" id="pd2"></div>
+        <div class="pin-dot" id="pd3"></div>
+      </div>
+      <div class="admin-pin-error" id="pinError"></div>
+      <div class="pin-pad">
+        <div class="pin-key" onclick="pinPress('1')">1</div>
+        <div class="pin-key" onclick="pinPress('2')">2</div>
+        <div class="pin-key" onclick="pinPress('3')">3</div>
+        <div class="pin-key" onclick="pinPress('4')">4</div>
+        <div class="pin-key" onclick="pinPress('5')">5</div>
+        <div class="pin-key" onclick="pinPress('6')">6</div>
+        <div class="pin-key" onclick="pinPress('7')">7</div>
+        <div class="pin-key" onclick="pinPress('8')">8</div>
+        <div class="pin-key" onclick="pinPress('9')">9</div>
+        <div class="pin-key del" onclick="pinDel()">⌫</div>
+        <div class="pin-key zero" onclick="pinPress('0')">0</div>
+        <div class="pin-key enter" onclick="pinEnter()">GO</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN DASHBOARD -->
+  <div id="adminDashboard" style="display:none;flex-direction:column;height:100%;">
+    <div class="admin-header">
+      <div class="admin-header-title">🛠️ NativeSaver Admin</div>
+      <button class="admin-close" onclick="closeAdmin()">✕</button>
+    </div>
+    <div class="admin-body" id="adminBody"></div>
+  </div>
+
+</div>
+
+<!-- PRICE MENU MODAL -->
+<div class="menu-modal-overlay" id="menuModal" onclick="closeMenuModal(event)">
+  <div class="menu-sheet">
+    <div class="menu-sheet-handle"></div>
+    <div class="menu-sheet-header">
+      <div class="menu-sheet-title">🖨️ Price &amp; Units Chart</div>
+      <div class="menu-sheet-sub">Select a service to know units needed &amp; exact ₹ cost</div>
+    </div>
+    <div class="menu-sheet-body">
+
+      <div class="menu-rate-pill">🪙 1 Unit = ₹2.50 &nbsp;·&nbsp; Minimum booking: 4 units = ₹10</div>
+
+      <!-- PRINTING -->
+      <div class="menu-cat">🖨️ Printing</div>
+
+      <div class="menu-item">
+        <div class="menu-item-left">
+          <div class="menu-item-icon">📄</div>
+          <div>
+            <div class="menu-item-name">B&amp;W Print</div>
+            <div class="menu-item-size">A4 · Text / Document</div>
+          </div>
+        </div>
+        <div class="menu-item-right">
+          <div class="menu-unit-price">₹2.50 / page</div>
+          <div class="menu-unit-badge">1 unit</div>
+        </div>
+      </div>
+
+      <div class="menu-item">
+        <div class="menu-item-left">
+          <div class="menu-item-icon">🎨</div>
+          <div>
+            <div class="menu-item-name">Colour Print</div>
+            <div class="menu-item-size">A4 · Full colour</div>
+          </div>
+        </div>
+        <div class="menu-item-right">
+          <div class="menu-unit-price">₹10.00 / page</div>
+          <div class="menu-unit-badge colour">4 units</div>
+        </div>
+      </div>
+
+      <div class="menu-item">
+        <div class="menu-item-left">
+          <div class="menu-item-icon">📄</div>
+          <div>
+            <div class="menu-item-name">B&amp;W Print · Text</div>
+            <div class="menu-item-size">A3 · Text only</div>
+          </div>
+        </div>
+        <div class="menu-item-right">
+          <div class="menu-unit-price">₹5.00 / page</div>
+          <div class="menu-unit-badge">2 units</div>
+        </div>
+      </div>
+
+      <div class="menu-item">
+        <div class="menu-item-left">
+          <div class="menu-item-icon">🖼️</div>
+          <div>
+            <div class="menu-item-name">B&amp;W Print · Image</div>
+            <div class="menu-item-size">A3 · Photo / graphic</div>
+          </div>
+        </div>
+        <div class="menu-item-right">
+          <div class="menu-unit-price">₹10.00 / page</div>
+          <div class="menu-unit-badge">4 units</div>
+        </div>
+      </div>
+
+      <div class="menu-item">
+        <div class="menu-item-left">
+          <div class="menu-item-icon">🎨</div>
+          <div>
+            <div class="menu-item-name">Colour Print · Text</div>
+            <div class="menu-item-size">A3 · Colour text</div>
+          </div>
+        </div>
+        <div class="menu-item-right">
+          <div class="menu-unit-price">₹20.00 / page</div>
+          <div class="menu-unit-badge colour">8 units</div>
+        </div>
+      </div>
+
+      <div class="menu-item">
+        <div class="menu-item-left">
+          <div class="menu-item-icon">🖼️</div>
+          <div>
+            <div class="menu-item-name">Colour Print · Image</div>
+            <div class="menu-item-size">A3 · Full colour graphic</div>
+          </div>
+        </div>
+        <div class="menu-item-right">
+          <div class="menu-unit-price">₹25.00 / page</div>
+          <div class="menu-unit-badge colour">10 units</div>
+        </div>
+      </div>
+
+      <!-- LAMINATION -->
+      <div class="menu-cat">✨ Lamination</div>
+
+      <div class="menu-item">
+        <div class="menu-item-left">
+          <div class="menu-item-icon">✨</div>
+          <div>
+            <div class="menu-item-name">Lamination</div>
+            <div class="menu-item-size">Up to A5 size</div>
+          </div>
+        </div>
+        <div class="menu-item-right">
+          <div class="menu-unit-price">₹20.00</div>
+          <div class="menu-unit-badge lami">8 units</div>
+        </div>
+      </div>
+
+      <div class="menu-item">
+        <div class="menu-item-left">
+          <div class="menu-item-icon">✨</div>
+          <div>
+            <div class="menu-item-name">Lamination</div>
+            <div class="menu-item-size">A4 size</div>
+          </div>
+        </div>
+        <div class="menu-item-right">
+          <div class="menu-unit-price">₹25.00</div>
+          <div class="menu-unit-badge lami">10 units</div>
+        </div>
+      </div>
+
+      <div class="menu-item">
+        <div class="menu-item-left">
+          <div class="menu-item-icon">✨</div>
+          <div>
+            <div class="menu-item-name">Lamination</div>
+            <div class="menu-item-size">A3 size</div>
+          </div>
+        </div>
+        <div class="menu-item-right">
+          <div class="menu-unit-price">₹50.00</div>
+          <div class="menu-unit-badge lami">20 units</div>
+        </div>
+      </div>
+
+      <!-- BINDING -->
+      <div class="menu-cat">📚 Binding</div>
+
+      <div class="menu-item">
+        <div class="menu-item-left">
+          <div class="menu-item-icon">📌</div>
+          <div>
+            <div class="menu-item-name">Binding · Pin</div>
+            <div class="menu-item-size">Staple / pin binding</div>
+          </div>
+        </div>
+        <div class="menu-item-right">
+          <div class="menu-unit-price">₹20.00</div>
+          <div class="menu-unit-badge bind">8 units</div>
+        </div>
+      </div>
+
+      <div class="menu-item">
+        <div class="menu-item-left">
+          <div class="menu-item-icon">🌀</div>
+          <div>
+            <div class="menu-item-name">Binding · Spiral</div>
+            <div class="menu-item-size">Coil / spiral binding</div>
+          </div>
+        </div>
+        <div class="menu-item-right">
+          <div class="menu-unit-price">₹25.00</div>
+          <div class="menu-unit-badge bind">10 units</div>
+        </div>
+      </div>
+
+      <button class="btn-secondary" style="margin-top:8px;" onclick="closeMenuModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHARE MODAL -->
+<div class="modal-overlay" id="shareModal" onclick="closeShareModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📤 Share Token</div>
+    <div class="share-option" onclick="shareTokenImage()">
+      <div class="share-option-icon" style="background:rgba(0,208,132,0.15);">📸</div>
+      <div>
+        <div class="share-option-text">Save as Image</div>
+        <div class="share-option-sub">Download token screenshot to your phone</div>
+      </div>
+    </div>
+    <div class="share-option" onclick="shareTokenWhatsApp()">
+      <div class="share-option-icon" style="background:rgba(37,211,102,0.15);">💬</div>
+      <div>
+        <div class="share-option-text">Share via WhatsApp</div>
+        <div class="share-option-sub">Send token number to family or friends</div>
+      </div>
+    </div>
+    <div class="share-option" onclick="shareTokenNative()">
+      <div class="share-option-icon" style="background:rgba(79,138,255,0.15);">📱</div>
+      <div>
+        <div class="share-option-text">More Options…</div>
+        <div class="share-option-sub">Share via any app on your phone</div>
+      </div>
+    </div>
+    <button class="btn-secondary" style="margin-top:4px;" onclick="closeShareModal()">Cancel</button>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────
+const TG_TOKEN  = '8786662406:AAEkNMoYOt7Ooinkyq3qe1MOLL2FuPinCFU';
+const TG_CHAT   = '651075904';
+const SHOP_OPEN  = 9;   // 9 AM
+const SHOP_CLOSE = 21;  // 9 PM
+const TOKEN_EXPIRY_MINS = 120; // 2 hours
+const BUSY_THRESHOLD = 5;
+const UNIT_PRICE = 2.5;
+const MIN_UNITS = 4;
+
+// ── PACKS ─────────────────────────────────────────────────────────────
+const PACKS = [
+  { id:'pack4',  units:4,  price:10 },
+  { id:'pack10', units:10, price:25 },
+];
+
+// ── BONUS LOGIC ───────────────────────────────────────────────────────
+function calcBonus(units) {
+  return Math.floor(units / 25) * 2;
+}
+
+// ── STATE ─────────────────────────────────────────────────────────────
+let lang = 'en';
+let currentUnits = MIN_UNITS;
+let selectedPackId = null;
+let currentStep = 1;
+let timerInterval = null;
+let tokenExpiry = null;
+
+// ── LANGUAGE ──────────────────────────────────────────────────────────
+const T = {
+  en: {
+    logoSub:'Print & Xerox Shop', open:'Shop Open', closed:'Shop Closed',
+    c1title:'Book Your Token', c1sub:'Enter your mobile number to get started',
+    c1note:'📋 Token is compulsory. Walk-ins are not accepted at the counter.',
+    c1label:'Mobile Number', c1btn:'Continue →', checkStatusBtn:'🔍 Check My Token Status',
+    c2title:'Buy Units', c2sub:'Choose a pack or enter units manually',
+    busyTitle:'🔥 Shop is Busy Right Now',
+    csTotal:'Total to Pay',
+    c2note:'💡 UPI preferred — carry exact cash, no change given at counter.',
+    c2btn:'Get My Token 🎫', c2back:'← Back',
+    c3label:'Your Token Number', c3sub:'Show this at the counter',
+    queueAhead:'People ahead:', waitTimeLabel:'Wait:',
+    timerLabel:'Token expires in:',
+    r1:'Phone', r2:'Units', r4:'Amount', r5:'Booked At',
+    c3warn:'⚠️ UPI preferred — carry exact cash, no change given. Token valid 2 hrs.',
+    saveBtn:'📥 Save Token', shareBtn:'📎 Send Files on WhatsApp', c3more:'🔄 Book Another Token',
+    langBtn:'తె', inQueue:'in queue',
+    closedTitle:'Shop is Closed', closedSub:'We are open 9 AM – 9 PM. Please come back during working hours.',
+    busyWarn:'people in queue. Expected wait: ~',
+    busyWarnEnd:'mins. You can still book.',
+    checkTitle:'Token Status', noToken:'No active token found for this number.',
+    expiredToken:'Your token has expired. Please book again.',
+    tokenActive:'Your token is active!',
+    aheadText:'people ahead of you',
+    waitText:'estimated wait',
+  },
+  te: {
+    logoSub:'ప్రింట్ & జెరాక్స్ షాప్', open:'షాప్ తెరిచి ఉంది', closed:'షాప్ మూసివేయబడింది',
+    c1title:'మీ టోకెన్ బుక్ చేయండి', c1sub:'ప్రారంభించడానికి మీ మొబైల్ నంబర్ నమోదు చేయండి',
+    c1note:'📋 టోకెన్ తప్పనిసరి. వాక్-ఇన్‌లు కౌంటర్‌లో అంగీకరించబడవు.',
+    c1label:'మొబైల్ నంబర్', c1btn:'కొనసాగించు →', checkStatusBtn:'🔍 నా టోకెన్ స్థితి తనిఖీ చేయండి',
+    c2title:'యూనిట్లు కొనండి', c2sub:'ప్యాక్ ఎంచుకోండి లేదా మాన్యువల్‌గా యూనిట్లు నమోదు చేయండి',
+    busyTitle:'🔥 షాప్ ఇప్పుడు బిజీగా ఉంది',
+    csTotal:'చెల్లించవలసిన మొత్తం',
+    c2note:'💡 కౌంటర్‌లో చెల్లించండి (నగదు లేదా UPI). టోకెన్ 2 గంటలు మాత్రమే చెల్లుబాటు అవుతుంది.',
+    c2btn:'నా టోకెన్ తీసుకోండి 🎫', c2back:'← వెనక్కి',
+    c3label:'మీ టోకెన్ నంబర్', c3sub:'కౌంటర్‌లో ఇది చూపించండి',
+    queueAhead:'ముందు వ్యక్తులు:', waitTimeLabel:'వేచి ఉండండి:',
+    timerLabel:'టోకెన్ గడువు ముగుస్తుంది:',
+    r1:'ఫోన్', r2:'యూనిట్లు', r4:'మొత్తం', r5:'బుక్ చేసిన సమయం',
+    c3warn:'⚠️ కౌంటర్‌లో చెల్లించండి. టోకెన్ 2 గంటలు మాత్రమే చెల్లుబాటు అవుతుంది.',
+    saveBtn:'📥 టోకెన్ సేవ్ చేయండి', shareBtn:'📎 WhatsApp లో ఫైల్స్ పంపండి', c3more:'🔄 మరొక టోకెన్ బుక్ చేయండి',
+    langBtn:'EN', inQueue:'క్యూలో',
+    closedTitle:'షాప్ మూసివేయబడింది', closedSub:'మేము ఉదయం 9 గంటలు – రాత్రి 9 గంటలు తెరిచి ఉంటాము.',
+    busyWarn:'మంది క్యూలో ఉన్నారు. వేచి ఉండే సమయం: ~',
+    busyWarnEnd:'నిమిషాలు. మీరు ఇంకా బుక్ చేయవచ్చు.',
+    checkTitle:'టోకెన్ స్థితి', noToken:'ఈ నంబర్‌కు చురుకైన టోకెన్ కనుగొనబడలేదు.',
+    expiredToken:'మీ టోకెన్ గడువు ముగిసింది. దయచేసి మళ్ళీ బుక్ చేయండి.',
+    tokenActive:'మీ టోకెన్ చురుకుగా ఉంది!',
+    aheadText:'మీ ముందు వ్యక్తులు',
+    waitText:'అంచనా వేచి ఉండే సమయం',
+  }
+};
+
+function t(key) { return T[lang][key] || T['en'][key] || key; }
+
+function applyLang() {
+  document.getElementById('langBtn').textContent = t('langBtn');
+  document.getElementById('logoSub').textContent = t('logoSub');
+  document.getElementById('c1title').textContent = t('c1title');
+  document.getElementById('c1sub').textContent = t('c1sub');
+  document.getElementById('c1note').textContent = t('c1note');
+  document.getElementById('c1label').textContent = t('c1label');
+  document.getElementById('c1btn').textContent = t('c1btn');
+  document.getElementById('checkStatusBtn').textContent = t('checkStatusBtn');
+  document.getElementById('c2title').textContent = t('c2title');
+  document.getElementById('c2sub').textContent = t('c2sub');
+  document.getElementById('csTotal').textContent = t('csTotal');
+  document.getElementById('c2note').textContent = t('c2note');
+  document.getElementById('c2btn').textContent = t('c2btn');
+  document.getElementById('c2back').textContent = t('c2back');
+  document.getElementById('c3label').textContent = t('c3label');
+  document.getElementById('c3sub').textContent = t('c3sub');
+  document.getElementById('timerLabel').textContent = t('timerLabel');
+  document.getElementById('r1').textContent = t('r1');
+  document.getElementById('r2').textContent = t('r2');
+  document.getElementById('r4').textContent = t('r4');
+  document.getElementById('r5').textContent = t('r5');
+  document.getElementById('c3warn').textContent = t('c3warn');
+  document.getElementById('saveBtn').textContent = t('saveBtn');
+  document.getElementById('shareBtn').textContent = t('shareBtn');
+  document.getElementById('c3more').textContent = t('c3more');
+  document.getElementById('queueAhead').innerHTML = t('queueAhead') + ' <span id="aheadNum">' + getAheadCount() + '</span>';
+  document.getElementById('waitTimeLabel').innerHTML = t('waitTimeLabel') + ' <span id="waitTimeVal">~' + getWaitTime() + ' min</span>';
+}
+
+function toggleLang() {
+  lang = lang === 'en' ? 'te' : 'en';
+  applyLang();
+}
+
+// ── QUEUE STORAGE ─────────────────────────────────────────────────────
+function getQueue() {
+  try { return JSON.parse(localStorage.getItem('ns_queue') || '[]'); } catch { return []; }
+}
+function saveQueue(q) { localStorage.setItem('ns_queue', JSON.stringify(q)); }
+function getNextTokenNum() {
+  let counter = parseInt(localStorage.getItem('ns_token_counter') || '0', 10);
+  counter += 1;
+  localStorage.setItem('ns_token_counter', String(counter));
+  return counter;
+}
+function getActiveQueue() {
+  const now = Date.now();
+  return getQueue().filter(t => t.expiresAt > now && !t.served);
+}
+function getAheadCount() { return Math.max(0, getActiveQueue().length); }
+function getWaitTime() { return Math.max(5, getAheadCount() * 5); }
+
+// ── SHOP STATUS ───────────────────────────────────────────────────────
+function isShopOpen() { return true; }
+function updateStatusBar() {
+  const open = isShopOpen();
+  const active = getActiveQueue();
+  const count = active.length;
+  const statusDot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+  const queueCount = document.getElementById('queueCount');
+  const busyBadge = document.getElementById('busyBadge');
+
+  statusDot.style.background = open ? 'var(--green)' : 'var(--red)';
+  statusDot.style.boxShadow = open ? '0 0 8px var(--green)' : '0 0 8px var(--red)';
+  statusText.textContent = open ? t('open') : t('closed');
+  queueCount.textContent = count + ' ' + t('inQueue');
+  busyBadge.style.display = count >= BUSY_THRESHOLD ? 'block' : 'none';
+
+  const bw = document.getElementById('busyWarning');
+  const bws = document.getElementById('busyWarnSub');
+  if (count >= BUSY_THRESHOLD) {
+    bw.style.display = 'block';
+    bws.textContent = count + ' ' + t('busyWarn') + getWaitTime() + t('busyWarnEnd');
+  } else {
+    bw.style.display = 'none';
+  }
+}
+
+// ── PHONE VALIDATION ──────────────────────────────────────────────────
+function validatePhone() {
+  const val = document.getElementById('phoneInput').value.replace(/\D/g,'');
+  document.getElementById('c1btn').disabled = val.length !== 10;
+}
+
+// ── PACK SELECTION ────────────────────────────────────────────────────
+function selectPack(units, price) {
+  currentUnits = units;
+  selectedPackId = 'pack' + units;
+  document.getElementById('unitsInput').value = units;
+  // Highlight selected pack
+  document.querySelectorAll('.pack-card').forEach(c => c.classList.remove('selected'));
+  const pc = document.getElementById('pack' + units);
+  if (pc) pc.classList.add('selected');
+  updateCostSummary();
+}
+
+// ── MANUAL UNITS ──────────────────────────────────────────────────────
+function changeUnits(delta) {
+  let n = Math.max(MIN_UNITS, Math.min(500, currentUnits + delta));
+  currentUnits = n;
+  document.getElementById('unitsInput').value = n;
+  clearPackHighlight();
+  updateCostSummary();
+}
+
+function manualUnits(val) {
+  let n = parseInt(val, 10);
+  if (isNaN(n) || n < 1) return;
+  if (n > 500) { n = 500; document.getElementById('unitsInput').value = 500; }
+  currentUnits = n;
+  clearPackHighlight();
+  updateCostSummary();
+}
+
+function enforceMinUnits(input) {
+  let n = parseInt(input.value, 10);
+  if (isNaN(n) || n < MIN_UNITS) n = MIN_UNITS;
+  if (n > 500) n = 500;
+  currentUnits = n;
+  input.value = n;
+  updateCostSummary();
+}
+
+function clearPackHighlight() {
+  selectedPackId = null;
+  document.querySelectorAll('.pack-card').forEach(c => c.classList.remove('selected'));
+}
+
+function updateCostSummary() {
+  const units = currentUnits;
+  const bonus = calcBonus(units);
+  const price = units * UNIT_PRICE;
+  document.getElementById('csUnitsVal').textContent = units + ' units' + (bonus > 0 ? ' + ' + bonus + ' bonus' : '');
+  const bonusRow = document.getElementById('bonusRow');
+  const bonusVal = document.getElementById('csBonusVal');
+  if (bonus > 0) {
+    bonusRow.style.display = 'flex';
+    bonusVal.textContent = '+' + bonus + ' free';
+  } else {
+    bonusRow.style.display = 'none';
+  }
+  document.getElementById('csTotalVal').textContent = '₹' + price.toFixed(2);
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────────────
+function goStep(n) {
+  currentStep = n;
+  document.querySelectorAll('.card').forEach((c,i) => {
+    c.classList.toggle('active', i+1 === n);
+  });
+  ['dot1','dot2','dot3'].forEach((id,i) => {
+    const d = document.getElementById(id);
+    d.className = 'step-dot' + (i+1 < n ? ' done' : i+1 === n ? ' active' : '');
+  });
+  window.scrollTo({top:0,behavior:'smooth'});
+  updateStatusBar();
+}
+
+function goToStep2() {
+  const phone = document.getElementById('phoneInput').value.replace(/\D/g,'');
+  if (phone.length !== 10) return;
+  currentUnits = MIN_UNITS;
+  selectedPackId = null;
+  document.querySelectorAll('.pack-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('unitsInput').value = MIN_UNITS;
+  updateCostSummary();
+  goStep(2);
+}
+
+// ── BOOK TOKEN ────────────────────────────────────────────────────────
+function bookToken() {
+  if (currentUnits < MIN_UNITS) return;
+  const phone = document.getElementById('phoneInput').value.replace(/\D/g,'');
+  const tokenNum = getNextTokenNum();
+  const tokenStr = 'T-' + String(tokenNum).padStart(3, '0');
+  const now = new Date();
+  const timeStr = now.toLocaleString('en-IN', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const expiresAt = now.getTime() + TOKEN_EXPIRY_MINS * 60 * 1000;
+
+  const bonus = calcBonus(currentUnits);
+  const totalUnits = currentUnits + bonus;
+  const totalPrice = currentUnits * UNIT_PRICE;
+  const unitsDisplay = bonus > 0
+    ? currentUnits + ' units + ' + bonus + ' bonus = ' + totalUnits + ' total'
+    : currentUnits + ' units';
+
+  // Save to queue
+  const q = getQueue();
+  q.push({ token: tokenStr, phone, units: totalUnits, price: totalPrice, bookedAt: now.getTime(), expiresAt, served: false });
+  saveQueue(q);
+
+  // Save to booking history
+  saveHistory({ token: tokenStr, phone, units: totalUnits, price: totalPrice, bookedAt: now.getTime(), timeStr });
+
+  window._lastTotalPrice = totalPrice;
+  window._lastPhone = phone;
+
+  // Update receipt UI
+  document.getElementById('tokenNum').textContent = tokenStr;
+  document.getElementById('rPhone').textContent = '+91 ' + phone;
+  document.getElementById('rService').textContent = unitsDisplay;
+  document.getElementById('rAmount').textContent = '₹' + totalPrice.toFixed(2);
+  document.getElementById('rTime').textContent = timeStr;
+
+  // Queue info
+  const ahead = Math.max(0, getActiveQueue().length - 1);
+  document.getElementById('aheadNum').textContent = ahead;
+  document.getElementById('waitTimeVal').textContent = ahead === 0 ? 'Now!' : '~' + Math.max(5, ahead * 5) + ' min';
+  document.getElementById('youreNextBanner').style.display = ahead === 0 ? 'block' : 'none';
+  const readyMins = Math.max(5, ahead * 5);
+  const readyTime = new Date(Date.now() + readyMins * 60000);
+  const readyStr = readyTime.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+  document.getElementById('readyTimeText').textContent = ahead === 0 ? 'Head to the counter now!' : 'Ready by ~' + readyStr;
+
+  startTimer(expiresAt);
+  playBookingChime();
+  liveQueuePoll._chimePlayed = false;
+  startLiveQueuePoll(tokenStr);
+
+  window._customerMsgRaw =
+'✅ Order Confirmed!\n\n' +
+'🎫 Token: ' + tokenStr + '\n' +
+'🪙 Units: ' + unitsDisplay + '\n' +
+'💰 Order Amount: Rs.' + totalPrice.toFixed(2) + '\n\n' +
+'Show this token at NativeSaver counter.\n' +
+'Thank you! 😊';
+
+  const unavailMsg =
+'❌ Service Unavailable — NativeSaver\n\n' +
+'Sorry, we are currently unable to serve your request.\n' +
+'Please try again later.\n\n' +
+'We apologise for the inconvenience. 🙏';
+
+  sendTelegram(
+'🎫 New Token!\n\n' +
+'Token: ' + tokenStr + '\n' +
+'Phone: +91' + phone + '\n' +
+'Units: ' + unitsDisplay + '\n' +
+'Amount: Rs.' + totalPrice.toFixed(2) + '\n' +
+'Time: ' + timeStr + '\n\n' +
+'✅ Send Order Confirmed:\n' +
+'https://wa.me/91' + phone + '?text=' + encodeURIComponent(window._customerMsgRaw) + '\n\n' +
+'❌ Send Unavailable:\n' +
+'https://wa.me/91' + phone + '?text=' + encodeURIComponent(unavailMsg)
+  );
+
+  goStep(3);
+  // Generate UPI QR with exact amount
+  setTimeout(() => generateUpiQr(totalPrice, tokenStr), 100);
+}
+
+// ── TIMER ─────────────────────────────────────────────────────────────
+function startTimer(expiresAt) {
+  tokenExpiry = expiresAt;
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    const remaining = tokenExpiry - Date.now();
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      document.getElementById('timerCount').textContent = 'EXPIRED';
+      document.getElementById('expiryTimer').style.background = 'rgba(255,68,68,0.2)';
+      return;
+    }
+    const h = Math.floor(remaining / 3600000);
+    const m = Math.floor((remaining % 3600000) / 60000);
+    const s = Math.floor((remaining % 60000) / 1000);
+    document.getElementById('timerCount').textContent = h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  }, 1000);
+}
+
+// ── CHECK TOKEN STATUS ────────────────────────────────────────────────
+function showCheckStatus() {
+  const s = document.getElementById('checkStatusSection');
+  s.style.display = s.style.display === 'none' ? 'block' : 'none';
+}
+
+function checkTokenStatus() {
+  const phone = document.getElementById('checkPhone').value.replace(/\D/g,'');
+  const result = document.getElementById('checkResult');
+  const q = getActiveQueue();
+  const token = q.find(t => t.phone === phone);
+
+  result.style.display = 'block';
+  if (!token) {
+    result.innerHTML = `<div style="text-align:center;padding:10px;"><div style="font-size:32px;margin-bottom:8px;">🤷</div><div style="font-weight:700;margin-bottom:4px;">${t('noToken')}</div></div>`;
+    return;
+  }
+  const ahead = q.indexOf(token);
+  const wait = Math.max(5, ahead * 5);
+  result.innerHTML = `
+    <div style="text-align:center;">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:4px;text-transform:uppercase;">${t('tokenActive')}</div>
+      <div class="status-token-num">${token.token}</div>
+      <div style="display:flex;justify-content:space-between;margin-top:12px;gap:10px;">
+        <div style="flex:1;background:var(--surface3);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:22px;font-weight:800;">${ahead}</div>
+          <div style="font-size:11px;color:var(--muted);">${t('aheadText')}</div>
+        </div>
+        <div style="flex:1;background:var(--surface3);border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:22px;font-weight:800;color:var(--accent);">~${wait}m</div>
+          <div style="font-size:11px;color:var(--muted);">${t('waitText')}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── SAVE / SHARE ──────────────────────────────────────────────────────
+function saveReceipt() {
+  const el = document.getElementById('receiptCapture');
+  html2canvas(el, { scale:2, backgroundColor:'#13131a', useCORS:true }).then(canvas => {
+    const link = document.createElement('a');
+    link.download = 'NativeSaver-' + document.getElementById('tokenNum').textContent + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+}
+
+function shareWhatsApp() {
+  const token = document.getElementById('tokenNum').textContent;
+  const amount = window._lastTotalPrice || '';
+
+  const msg =
+'✅ Order Confirmed!\n\n' +
+'🎫 Token: ' + token + '\n' +
+(amount ? '💰 Order Amount: Rs.' + amount + '\n' : '') +
+'\nShow this token at NativeSaver counter.\n' +
+'Thank you! 😊';
+
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+
+function sendConfirmedWA() {
+  const phone = window._lastPhone || '';
+  const token = document.getElementById('tokenNum').textContent;
+  const amount = window._lastTotalPrice || '';
+
+  const msg =
+'✅ *Order Confirmed — NativeSaver*\n\n' +
+'🎫 Token: *' + token + '*\n' +
+(amount ? '💰 Order Amount: *Rs.' + amount + '*\n' : '') +
+'\n📍 Please show this token at the NativeSaver counter.\n' +
+'⏱ Token is valid for *2 hours* from booking time.\n\n' +
+'Thank you! 😊';
+
+  window.open('https://wa.me/91' + phone + '?text=' + encodeURIComponent(msg), '_blank');
+}
+
+function sendUnavailableWA() {
+  const phone = window._lastPhone || '';
+
+  const msg =
+'❌ *Service Unavailable — NativeSaver*\n\n' +
+'Sorry, we are currently *unable to serve* your request at NativeSaver.\n\n' +
+'This may be due to:\n' +
+'• High queue volume\n' +
+'• Technical issue\n' +
+'• Shop closure\n\n' +
+'Please try again later.\n\n' +
+'We apologise for the inconvenience. 🙏';
+
+  window.open('https://wa.me/91' + phone + '?text=' + encodeURIComponent(msg), '_blank');
+}
+
+function bookAnother() {
+  // Reset state
+  currentUnits = MIN_UNITS;
+  selectedPackId = null;
+
+  // Reset phone input
+  document.getElementById('phoneInput').value = '';
+  document.getElementById('c1btn').disabled = true;
+
+  // Reset units input and cost summary
+  document.getElementById('unitsInput').value = MIN_UNITS;
+  updateCostSummary();
+
+  // Clear pack highlights
+  document.querySelectorAll('.pack-card').forEach(c => c.classList.remove('selected'));
+
+  // Stop timers and polling
+  if (timerInterval) clearInterval(timerInterval);
+  if (notifyTimeout15) clearTimeout(notifyTimeout15);
+  if (notifyTimeout5)  clearTimeout(notifyTimeout5);
+  stopLiveQueuePoll();
+  myTokenStr = null;
+
+  // Reset banner and notify button
+  document.getElementById('youreNextBanner').style.display = 'none';
+  const btn = document.getElementById('notifyBtn');
+  btn.textContent = '🔔 Notify Me Before Expiry';
+  btn.className = 'btn-notify';
+
+  // Hide check status and history sections
+  document.getElementById('checkStatusSection').style.display = 'none';
+  document.getElementById('historySection').style.display = 'none';
+  document.getElementById('checkResult').style.display = 'none';
+
+  // Reset UPI QR
+  document.getElementById('upiQrCanvas').innerHTML = '';
+  document.getElementById('upiAmtBadge').textContent  = '₹0';
+  document.getElementById('upiAmtInline').textContent = '₹0';
+
+  goStep(1);
+}
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────────────
+let notifyTimeout15 = null;
+let notifyTimeout5  = null;
+
+function enableNotification() {
+  const btn = document.getElementById('notifyBtn');
+  if (!('Notification' in window)) {
+    btn.textContent = '❌ Not supported on this browser';
+    btn.classList.add('denied');
+    return;
+  }
+  if (Notification.permission === 'granted') {
+    scheduleNotifications();
+    btn.textContent = '✅ Notifications Enabled!';
+    btn.classList.add('active');
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    btn.textContent = '🚫 Permission Denied — Enable in Browser Settings';
+    btn.classList.add('denied');
+    return;
+  }
+  Notification.requestPermission().then(permission => {
+    if (permission === 'granted') {
+      scheduleNotifications();
+      btn.textContent = '✅ Notifications Enabled!';
+      btn.classList.add('active');
+    } else {
+      btn.textContent = '🚫 Permission Denied — Enable in Browser Settings';
+      btn.classList.add('denied');
+    }
+  });
+}
+
+function scheduleNotifications() {
+  if (!tokenExpiry) return;
+  const now = Date.now();
+  const token = document.getElementById('tokenNum').textContent;
+
+  // Clear any previous scheduled notifications
+  if (notifyTimeout15) clearTimeout(notifyTimeout15);
+  if (notifyTimeout5)  clearTimeout(notifyTimeout5);
+
+  const t15 = tokenExpiry - now - 15 * 60 * 1000; // 15 min before
+  const t5  = tokenExpiry - now - 5  * 60 * 1000; // 5 min before
+
+  if (t15 > 0) {
+    notifyTimeout15 = setTimeout(() => {
+      new Notification('⏰ NativeSaver Token Expiring Soon', {
+        body: token + ' expires in 15 minutes! Head to the counter now.',
+        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="%23ff6b2b"/><text y="44" x="10" font-size="40">🖨️</text></svg>'
+      });
+    }, t15);
+  }
+  if (t5 > 0) {
+    notifyTimeout5 = setTimeout(() => {
+      new Notification('🚨 NativeSaver Token Almost Expired!', {
+        body: token + ' expires in 5 minutes! Please go to the counter immediately.',
+        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="%23ff4444"/><text y="44" x="10" font-size="40">⏱️</text></svg>'
+      });
+    }, t5);
+  }
+}
+
+
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem('ns_history') || '[]'); } catch { return []; }
+}
+function saveHistory(entry) {
+  const h = getHistory();
+  h.unshift(entry); // newest first
+  if (h.length > 100) h.splice(100); // cap at 100
+  localStorage.setItem('ns_history', JSON.stringify(h));
+}
+
+function showHistory() {
+  const phone = document.getElementById('phoneInput').value.replace(/\D/g,'');
+  const hs = document.getElementById('historySection');
+  const list = document.getElementById('historyList');
+  if (hs.style.display === 'block') { hs.style.display = 'none'; return; }
+  if (phone.length !== 10) {
+    list.innerHTML = `<div style="text-align:center;padding:16px;color:var(--muted);font-size:13px;">Please enter your 10-digit phone number first.</div>`;
+    hs.style.display = 'block';
+    return;
+  }
+  const all = getHistory().filter(h => h.phone === phone);
+  if (!all.length) {
+    list.innerHTML = `<div style="text-align:center;padding:16px;color:var(--muted);font-size:13px;">No bookings found for this number.</div>`;
+  } else {
+    list.innerHTML = all.map(h => `
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:16px;font-weight:900;font-family:'JetBrains Mono',monospace;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${h.token}</span>
+          <span style="font-size:14px;font-weight:800;color:var(--green);">₹${h.price.toFixed(2)}</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted2);">${h.units} units · ${h.timeStr}</div>
+      </div>`).join('');
+  }
+  hs.style.display = 'block';
+}
+
+// ── DAILY SUMMARY ─────────────────────────────────────────────────────
+function getDailyKey() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function getDailySummaryData() {
+  const today = getDailyKey();
+  const all = getHistory();
+  const todayBookings = all.filter(h => {
+    const d = new Date(h.bookedAt);
+    const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    return key === today;
+  });
+  const totalTokens = todayBookings.length;
+  const totalRevenue = todayBookings.reduce((s, h) => s + h.price, 0);
+  const totalUnits = todayBookings.reduce((s, h) => s + (h.units || 0), 0);
+  return { totalTokens, totalRevenue, totalUnits, date: today };
+}
+function sendDailySummary() {
+  const { totalTokens, totalRevenue, totalUnits, date } = getDailySummaryData();
+  if (totalTokens === 0) return;
+  sendTelegram(
+'📊 Daily Summary — NativeSaver\n' +
+'📅 Date: ' + date + '\n\n' +
+'🎫 Total Tokens: ' + totalTokens + '\n' +
+'🪙 Total Units Sold: ' + totalUnits + '\n' +
+'💰 Total Revenue: Rs.' + totalRevenue.toFixed(2) + '\n\n' +
+'Shop closed for the day. Good work! 🙌'
+  );
+  localStorage.setItem('ns_summary_sent', getDailyKey());
+}
+function scheduleDailySummary() {
+  setInterval(() => {
+    const now = new Date();
+    // Send at shop close hour (21:00)
+    if (now.getHours() === SHOP_CLOSE && now.getMinutes() === 0) {
+      const sentKey = localStorage.getItem('ns_summary_sent');
+      if (sentKey !== getDailyKey()) sendDailySummary();
+    }
+  }, 60000); // check every minute
+}
+
+// ── SOUND ALERT ───────────────────────────────────────────────────────
+function playBookingChime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5 E5 G5 C6
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const start = ctx.currentTime + i * 0.13;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.18, start + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+      osc.start(start); osc.stop(start + 0.36);
+    });
+  } catch(e) {}
+}
+
+// ── LIVE QUEUE POSITION POLL ──────────────────────────────────────────
+let liveQueueInterval = null;
+let myTokenStr = null;
+
+function startLiveQueuePoll(tokenStr) {
+  myTokenStr = tokenStr;
+  if (liveQueueInterval) clearInterval(liveQueueInterval);
+  liveQueuePoll();
+  liveQueueInterval = setInterval(liveQueuePoll, 15000); // every 15s
+}
+
+function stopLiveQueuePoll() {
+  if (liveQueueInterval) clearInterval(liveQueueInterval);
+  liveQueueInterval = null;
+}
+
+function liveQueuePoll() {
+  if (!myTokenStr) return;
+  const q = getActiveQueue();
+  const idx = q.findIndex(t => t.token === myTokenStr);
+  if (idx === -1) return;
+  const ahead = idx; // 0 = you're next
+
+  document.getElementById('aheadNum').textContent = ahead;
+  document.getElementById('waitTimeVal').textContent = ahead === 0 ? 'Now!' : '~' + Math.max(5, ahead * 5) + ' min';
+
+  // "You're Next" banner
+  const banner = document.getElementById('youreNextBanner');
+  banner.style.display = ahead === 0 ? 'block' : 'none';
+
+  // Estimated ready time
+  const readyMins = Math.max(5, ahead * 5);
+  const readyTime = new Date(Date.now() + readyMins * 60000);
+  const readyStr = readyTime.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+  document.getElementById('readyTimeText').textContent = ahead === 0 ? 'Head to the counter now!' : 'Ready by ~' + readyStr;
+
+  // Chime when user becomes next
+  if (ahead === 0 && !liveQueuePoll._chimePlayed) {
+    liveQueuePoll._chimePlayed = true;
+    playBookingChime();
+  }
+}
+
+
+// ── PRICE MENU MODAL ──────────────────────────────────────────────────
+function openMenuModal() {
+  document.getElementById('menuModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeMenuModal(e) {
+  if (!e || e.target === document.getElementById('menuModal')) {
+    document.getElementById('menuModal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+}
+
+// ── SHARE MODAL ───────────────────────────────────────────────────────
+function openShareModal() {
+  document.getElementById('shareModal').classList.add('open');
+}
+function closeShareModal(e) {
+  if (!e || e.target === document.getElementById('shareModal')) {
+    document.getElementById('shareModal').classList.remove('open');
+  }
+}
+function shareTokenImage() {
+  closeShareModal();
+  saveReceipt();
+}
+function shareTokenWhatsApp() {
+  closeShareModal();
+  const token = document.getElementById('tokenNum').textContent;
+  const svc   = document.getElementById('rService').textContent;
+  const time  = document.getElementById('rTime').textContent;
+  const amt   = window._lastTotalPrice ? '₹' + window._lastTotalPrice : '';
+  const msg =
+'🖨️ *NativeSaver — Order Confirmed!*\n\n' +
+'🎫 Token: *' + token + '*\n' +
+'🪙 Units: ' + svc + '\n' +
+(amt ? '💰 Order Amount: ' + amt + '\n' : '') +
+'🕐 Booked: ' + time + '\n\n' +
+'Show this token at the NativeSaver counter.\n' +
+'Token valid for 2 hours. 📍';
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+function shareTokenNative() {
+  closeShareModal();
+  const token = document.getElementById('tokenNum').textContent;
+  const svc   = document.getElementById('rService').textContent;
+  const amt   = window._lastTotalPrice ? '₹' + window._lastTotalPrice : '';
+  const text  = 'NativeSaver Token: ' + token + ' | ' + svc + (amt ? ' | ' + amt : '') + ' | Show at counter';
+  if (navigator.share) {
+    navigator.share({ title: 'NativeSaver Token ' + token, text }).catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(text).then(() => alert('Token copied to clipboard!')).catch(()=>{});
+  }
+}
+
+// ── CALL SHOP ─────────────────────────────────────────────────────────
+function callShop() {
+  window.location.href = 'tel:+919000989489';
+}
+
+// ── SEND FILES WHATSAPP (with token pre-filled) ───────────────────────
+function sendFilesWhatsApp() {
+  const token = document.getElementById('tokenNum').textContent;
+  const msg = 'Hi, I want to send my print files 🖨️\nMy Token: *' + token + '*';
+  window.open('https://api.whatsapp.com/send?phone=919000989489&text=' + encodeURIComponent(msg), '_blank');
+}
+
+// ── TELEGRAM ──────────────────────────────────────────────────────────
+function sendTelegram(msg, attempt) {
+  attempt = attempt || 1;
+  fetch('https://api.telegram.org/bot' + TG_TOKEN + '/sendMessage', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: TG_CHAT, text: msg, disable_web_page_preview: true })
+  })
+  .then(function(res) {
+    return res.json().then(function(data) {
+      if (!data.ok) {
+        console.error('Telegram error:', data.description);
+        if (attempt < 3) {
+          setTimeout(function() { sendTelegram(msg, attempt + 1); }, 3000 * attempt);
+        } else {
+          showTgError('Telegram: ' + (data.description || 'unknown error'));
+        }
+      }
+    });
+  })
+  .catch(function(err) {
+    console.error('Telegram fetch failed:', err);
+    if (attempt < 3) {
+      setTimeout(function() { sendTelegram(msg, attempt + 1); }, 3000 * attempt);
+    } else {
+      showTgError('Telegram unreachable after 3 tries. Check bot/internet.');
+    }
+  });
+}
+
+function showTgError(msg) {
+  // Show a small dismissible toast so admin knows Telegram failed
+  var toast = document.getElementById('tgErrorToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'tgErrorToast';
+    toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);' +
+      'background:#1a0a0a;border:1px solid #ff3a5c;color:#ff7090;border-radius:14px;' +
+      'padding:10px 18px;font-size:12px;font-weight:700;z-index:9999;max-width:320px;' +
+      'text-align:center;box-shadow:0 4px 20px rgba(255,58,92,0.3);';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = '⚠️ ' + msg;
+  toast.style.display = 'block';
+  setTimeout(function() { toast.style.display = 'none'; }, 8000);
+}
+
+// ── CANVAS GRID ───────────────────────────────────────────────────────
+(function initGrid() {
+  const canvas = document.getElementById('bgCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const CELL = 40;
+  const APP_MAX = 430;
+  const COLOR = 'rgba(255,90,31,0.07)';
+
+  function draw() {
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    canvas.width  = W;
+    canvas.height = H;
+    ctx.clearRect(0, 0, W, H);
+
+    // Center the grid on the app column
+    const appW   = Math.min(W, APP_MAX);
+    const startX = Math.floor((W - appW) / 2);
+    const endX   = startX + appW;
+
+    // Vignette fade — full opacity in center, fade to edges & bottom
+    const cx = W / 2;
+    const topH = H * 0.55;
+
+    ctx.strokeStyle = COLOR;
+    ctx.lineWidth = 1;
+
+    // Vertical lines (only inside app column)
+    for (let x = startX; x <= endX; x += CELL) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, H);
+      ctx.stroke();
+    }
+    // Horizontal lines (only inside app column, fading toward bottom)
+    for (let y = 0; y <= H; y += CELL) {
+      const fade = Math.max(0, 1 - (y / topH) * 0.85);
+      ctx.globalAlpha = fade;
+      ctx.beginPath();
+      ctx.moveTo(startX, y);
+      ctx.lineTo(endX, y);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  draw();
+  window.addEventListener('resize', draw);
+})();
+
+// ── INIT ──────────────────────────────────────────────────────────────
+updateStatusBar();
+setInterval(updateStatusBar, 30000);
+scheduleDailySummary();
+updateCostSummary();
+// ── ENTRY ANIMATIONS ──────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Staggered card element entrances
+  const animateCard = (cardEl) => {
+    const children = cardEl.querySelectorAll('.card-icon, .card-title, .card-sub, .info-note, .phone-wrap, .pack-grid, .pages-row, .cost-summary, .btn-primary, .btn-secondary, .warn-note');
+    children.forEach((el, i) => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(16px)';
+      el.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+      setTimeout(() => {
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0)';
+      }, 80 + i * 55);
+    });
+  };
+
+  // Intercept goStep to trigger animations
+  const _origGoStep = window.goStep;
+  window.goStep = function(n) {
+    _origGoStep(n);
+    const card = document.getElementById('card' + n);
+    if (card) setTimeout(() => animateCard(card), 50);
+  };
+
+  // Animate card1 on load
+  setTimeout(() => {
+    const card1 = document.getElementById('card1');
+    if (card1) animateCard(card1);
+  }, 100);
+});
+
+// ── RIPPLE EFFECT ON BUTTONS ──────────────────────────────────────────
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.btn-primary, .btn-green, .btn-notify, .btn-call, .btn-wa-files');
+  if (!btn) return;
+  const ripple = document.createElement('span');
+  const rect = btn.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height) * 1.5;
+  ripple.style.cssText = `
+    position:absolute;width:${size}px;height:${size}px;
+    left:${e.clientX - rect.left - size/2}px;top:${e.clientY - rect.top - size/2}px;
+    background:rgba(255,255,255,0.15);border-radius:50%;
+    transform:scale(0);animation:rippleAnim 0.55s ease-out forwards;
+    pointer-events:none;z-index:10;
+  `;
+  if (!document.getElementById('rippleStyle')) {
+    const s = document.createElement('style');
+    s.id = 'rippleStyle';
+    s.textContent = '@keyframes rippleAnim{to{transform:scale(1);opacity:0;}}';
+    document.head.appendChild(s);
+  }
+  btn.style.position = 'relative';
+  btn.style.overflow = 'hidden';
+  btn.appendChild(ripple);
+  setTimeout(() => ripple.remove(), 560);
+});
+
+
+// ── UPI QR CODE ───────────────────────────────────────────────────────
+const UPI_VPA  = '9030940640@okbizaxis';
+const UPI_NAME = 'NativeSaver';
+let _upiAmount = 0;
+let _upiToken  = '';
+
+function generateUpiQr(amount, tokenStr) {
+  _upiAmount = amount;
+  _upiToken  = tokenStr;
+
+  const upiUrl = buildUpiUrl(amount, tokenStr);
+
+  // Update amount displays
+  document.getElementById('upiAmtBadge').textContent  = '₹' + amount.toFixed(2);
+  document.getElementById('upiAmtInline').textContent = '₹' + amount.toFixed(2);
+
+  // Clear previous QR
+  const container = document.getElementById('upiQrCanvas');
+  container.innerHTML = '';
+
+  // Generate QR locally using QRCode.js — no internet needed, always works
+  try {
+    new QRCode(container, {
+      text: upiUrl,
+      width: 220,
+      height: 220,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+    // Style the generated canvas/img
+    setTimeout(() => {
+      const el = container.querySelector('canvas') || container.querySelector('img');
+      if (el) {
+        el.style.borderRadius = '8px';
+        el.style.display = 'block';
+      }
+    }, 50);
+  } catch(e) {
+    // Fallback to API if QRCode.js fails
+    const encoded = encodeURIComponent(upiUrl);
+    container.innerHTML =
+      '<img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&ecc=M&data=' + encoded + '" ' +
+      'width="220" height="220" style="border-radius:8px;display:block;" ' +
+      'alt="UPI QR Code" ' +
+      'onerror="this.parentElement.innerHTML=\'<div style=&quot;color:#ff5a1f;font-size:12px;text-align:center;padding:10px;&quot;>QR load failed — check internet</div>\'">';
+  }
+}
+
+function buildUpiUrl(amount, tokenStr) {
+  return 'upi://pay?pa=' + UPI_VPA
+    + '&pn=' + encodeURIComponent(UPI_NAME)
+    + '&am=' + amount.toFixed(2)
+    + '&cu=INR'
+    + '&tn=' + encodeURIComponent('NativeSaver ' + tokenStr);
+}
+
+function openUpiApp() {
+  const url = buildUpiUrl(_upiAmount, _upiToken);
+  window.location.href = url;
+}
+
+// ── ADMIN PANEL ───────────────────────────────────────────────────────
+const ADMIN_PIN = '1234'; // ← Change this to your preferred PIN
+let pinBuffer = '';
+let adminUnlocked = false;
+
+function openAdmin() {
+  document.getElementById('adminOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  if (adminUnlocked) {
+    showDashboard();
+  } else {
+    pinBuffer = '';
+    updatePinDots();
+    document.getElementById('pinError').textContent = '';
+    document.getElementById('adminPinScreen').style.display = 'flex';
+    document.getElementById('adminDashboard').style.display = 'none';
+  }
+}
+
+function closeAdmin() {
+  document.getElementById('adminOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function pinPress(d) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += d;
+  updatePinDots();
+  if (pinBuffer.length === 4) {
+    setTimeout(pinEnter, 120);
+  }
+}
+
+function pinDel() {
+  pinBuffer = pinBuffer.slice(0, -1);
+  updatePinDots();
+  document.getElementById('pinError').textContent = '';
+}
+
+function pinEnter() {
+  if (pinBuffer === ADMIN_PIN) {
+    adminUnlocked = true;
+    document.getElementById('pinError').textContent = '';
+    showDashboard();
+  } else {
+    document.getElementById('pinError').textContent = '❌ Wrong PIN — try again';
+    pinBuffer = '';
+    updatePinDots();
+    // Shake dots
+    const dots = document.getElementById('pinDots');
+    dots.style.animation = 'none';
+    dots.style.transform = 'translateX(8px)';
+    setTimeout(() => { dots.style.transform = 'translateX(-8px)'; }, 80);
+    setTimeout(() => { dots.style.transform = 'translateX(0)'; }, 160);
+  }
+}
+
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById('pd' + i).classList.toggle('filled', i < pinBuffer.length);
+  }
+}
+
+function getAdminStatuses() {
+  try { return JSON.parse(localStorage.getItem('ns_admin_status') || '{}'); } catch { return {}; }
+}
+function setAdminStatus(token, field, val) {
+  const s = getAdminStatuses();
+  if (!s[token]) s[token] = {};
+  s[token][field] = val;
+  localStorage.setItem('ns_admin_status', JSON.stringify(s));
+}
+
+function adminToggleToken(token) {
+  const s = getAdminStatuses();
+  const cur = s[token] && s[token].tokenConfirmed;
+  setAdminStatus(token, 'tokenConfirmed', !cur);
+  renderAdminBody();
+}
+
+function adminTogglePayment(token) {
+  const s = getAdminStatuses();
+  const cur = s[token] && s[token].paymentConfirmed;
+  setAdminStatus(token, 'paymentConfirmed', !cur);
+  renderAdminBody();
+}
+
+function adminMarkServed(token) {
+  const q = getQueue();
+  const idx = q.findIndex(t => t.token === token);
+  if (idx !== -1) { q[idx].served = true; saveQueue(q); }
+  setAdminStatus(token, 'served', true);
+  renderAdminBody();
+  updateStatusBar();
+}
+
+function showDashboard() {
+  document.getElementById('adminPinScreen').style.display = 'none';
+  document.getElementById('adminDashboard').style.display = 'flex';
+  renderAdminBody();
+}
+
+function renderAdminBody() {
+  const body = document.getElementById('adminBody');
+  const allHistory = getHistory();
+  const activeQ = getActiveQueue();
+  const statuses = getAdminStatuses();
+
+  // Stats
+  const today = getDailyKey();
+  const todayH = allHistory.filter(h => {
+    const d = new Date(h.bookedAt);
+    const k = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    return k === today;
+  });
+  const todayRev = todayH.reduce((s,h) => s + h.price, 0);
+  const confirmedPay = Object.values(statuses).filter(s => s.paymentConfirmed).length;
+
+  // Queue tokens enriched
+  const queueTokens = activeQ.map(t => ({
+    ...t,
+    status: statuses[t.token] || {}
+  }));
+
+  // All history tokens not in active queue (done/expired)
+  const doneTokens = allHistory.filter(h => !activeQ.find(q => q.token === h.token)).slice(0, 20).map(h => ({
+    ...h,
+    served: true,
+    status: statuses[h.token] || {}
+  }));
+
+  let html = `
+    <div class="admin-stats-row">
+      <div class="admin-stat">
+        <div class="admin-stat-val">${activeQ.length}</div>
+        <div class="admin-stat-label">In Queue</div>
+      </div>
+      <div class="admin-stat">
+        <div class="admin-stat-val">${todayH.length}</div>
+        <div class="admin-stat-label">Today's Tokens</div>
+      </div>
+      <div class="admin-stat">
+        <div class="admin-stat-val" style="font-size:18px;">₹${todayRev.toFixed(0)}</div>
+        <div class="admin-stat-label">Today's Revenue</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:6px;">
+      <div style="flex:1;background:rgba(0,240,144,0.08);border:1px solid rgba(0,240,144,0.2);border-radius:12px;padding:10px 12px;text-align:center;">
+        <div style="font-size:18px;font-weight:900;color:var(--green);">${Object.values(statuses).filter(s=>s.tokenConfirmed).length}</div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:0.6px;text-transform:uppercase;margin-top:2px;">Tokens ✓</div>
+      </div>
+      <div style="flex:1;background:rgba(77,140,255,0.08);border:1px solid rgba(77,140,255,0.2);border-radius:12px;padding:10px 12px;text-align:center;">
+        <div style="font-size:18px;font-weight:900;color:var(--blue);">${confirmedPay}</div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:0.6px;text-transform:uppercase;margin-top:2px;">Payments ✓</div>
+      </div>
+    </div>
+  `;
+
+  if (queueTokens.length === 0 && doneTokens.length === 0) {
+    html += `<div class="admin-empty">📭 No tokens yet today</div>`;
+  }
+
+  if (queueTokens.length > 0) {
+    html += `<div class="admin-section-label">🟢 Active Queue (${queueTokens.length})</div>`;
+    queueTokens.forEach((tok, idx) => {
+      const tConf  = tok.status.tokenConfirmed;
+      const pConf  = tok.status.paymentConfirmed;
+      const both   = tConf && pConf;
+      const cardCls = both ? 'confirmed-both' : tConf ? 'confirmed-tok' : pConf ? 'confirmed-pay' : '';
+      const timeAgo = formatTimeAgo(tok.bookedAt);
+      const expiresIn = Math.max(0, Math.round((tok.expiresAt - Date.now()) / 60000));
+      html += `
+        <div class="admin-token-card ${cardCls}" id="atc-${tok.token}">
+          <div class="admin-tok-top">
+            <div class="admin-tok-num">${tok.token}</div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+              <div class="admin-tok-time">#${idx+1} in queue · ${timeAgo}</div>
+              <div style="font-size:11px;color:${expiresIn < 30 ? 'var(--red)' : 'var(--muted)'};">⏱ ${expiresIn}m left</div>
+            </div>
+          </div>
+          <div class="admin-tok-meta">
+            📱 +91 ${tok.phone} &nbsp;·&nbsp; 🪙 ${tok.units} units &nbsp;·&nbsp; 💰 ₹${tok.price.toFixed(2)}
+          </div>
+          <div class="admin-tok-actions">
+            <button class="admin-action-btn tok-confirm ${tConf ? 'done' : ''}" onclick="adminToggleToken('${tok.token}')">
+              ${tConf ? '✅ Token Confirmed' : '⬜ Token Confirmed'}
+            </button>
+            <button class="admin-action-btn pay-confirm ${pConf ? 'done' : ''}" onclick="adminTogglePayment('${tok.token}')">
+              ${pConf ? '💳 Payment Confirmed' : '⬜ Payment Confirmed'}
+            </button>
+          </div>
+          ${both ? `<button onclick="adminMarkServed('${tok.token}')" style="width:100%;margin-top:8px;padding:9px;border-radius:11px;background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.3);color:#c084fc;font-size:12px;font-weight:800;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;">✓ Mark as Served & Remove</button>` : ''}
+        </div>`;
+    });
+  }
+
+  if (doneTokens.length > 0) {
+    html += `<div class="admin-section-label">📋 Recent History (last 20)</div>`;
+    doneTokens.forEach(tok => {
+      const tConf = tok.status.tokenConfirmed;
+      const pConf = tok.status.paymentConfirmed;
+      html += `
+        <div class="admin-token-card" style="opacity:0.7;">
+          <div class="admin-tok-top">
+            <div class="admin-tok-num" style="font-size:18px;">${tok.token}</div>
+            <div class="admin-tok-time">${tok.timeStr || formatTimeAgo(tok.bookedAt)}</div>
+          </div>
+          <div class="admin-tok-meta">📱 +91 ${tok.phone} · 🪙 ${tok.units} units · ₹${tok.price.toFixed(2)}</div>
+          <div class="admin-tok-actions">
+            <button class="admin-action-btn tok-confirm ${tConf ? 'done' : ''}" onclick="adminToggleToken('${tok.token}')">
+              ${tConf ? '✅ Token ✓' : '⬜ Token'}
+            </button>
+            <button class="admin-action-btn pay-confirm ${pConf ? 'done' : ''}" onclick="adminTogglePayment('${tok.token}')">
+              ${pConf ? '💳 Payment ✓' : '⬜ Payment'}
+            </button>
+          </div>
+        </div>`;
+    });
+  }
+
+  html += `
+    <button class="admin-refresh-btn" onclick="renderAdminBody()">🔄 Refresh</button>
+    <button class="admin-logout-btn" onclick="adminLogout()">🔒 Lock Admin Panel</button>
+  `;
+
+  body.innerHTML = html;
+}
+
+function adminLogout() {
+  adminUnlocked = false;
+  pinBuffer = '';
+  updatePinDots();
+  document.getElementById('pinError').textContent = '';
+  document.getElementById('adminPinScreen').style.display = 'flex';
+  document.getElementById('adminDashboard').style.display = 'none';
+}
+
+function formatTimeAgo(ts) {
+  const diff = Math.floor((Date.now() - ts) / 60000);
+  if (diff < 1) return 'just now';
+  if (diff < 60) return diff + 'm ago';
+  const h = Math.floor(diff / 60);
+  return h + 'h ' + (diff % 60) + 'm ago';
+}
+
+</script>
+</body>
+</html>
